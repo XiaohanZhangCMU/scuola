@@ -35,8 +35,8 @@ while True:
         long_description = long_description[:start] + long_description[end + len(end_tag):]
 
 classifiers = [
+    'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
-    'Programming Language :: Python :: 3.13',
 ]
 
 install_requires = [
