@@ -43,7 +43,7 @@ install_requires = [
     "torch>=2.6,<3",
     "vllm>=0.8.2",
     "transformers>=4.51",
-    "accelerate==1.4.0",
+    "accelerate==1.6.0",
     "datasets==3.3.2",
     "deepspeed==0.16.4",
     "wandb==0.19.7",
