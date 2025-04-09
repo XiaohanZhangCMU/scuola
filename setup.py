@@ -50,10 +50,13 @@ install_requires = [
     "ipykernel==6.29.5",
     "ipywidgets==8.1.5",
     "jupyter==1.1.1",
-    "flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.2.post1/flash_attn-2.7.2.post1+cu12torch2.5cxx11abiFALSE-cp310-cp310-linux_x86_64.whl",
 ]
 
 extra_deps = {}
+
+extra_deps['gpu-flash2'] = [
+    "flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.2.post1/flash_attn-2.7.2.post1+cu12torch2.5cxx11abiFALSE-cp310-cp310-linux_x86_64.whl",
+]
 
 extra_deps['dev'] = [
     'pre-commit>=2.18.1,<4',
@@ -89,7 +92,16 @@ extra_deps['docs'] = [
     'sphinxcontrib-serializinghtml==1.1.5',
 ]
 
-extra_deps['all'] = sorted({dep for deps in extra_deps.values() for dep in deps})
+extra_deps['testing'] = [
+    'mosaicml-cli>=0.5.25,<0.8',
+]
+
+extra_deps['all'] = {
+    dep for key, deps in extra_deps.items() for dep in deps
+    if key not in {'gpu-flash2'}
+}
+
+extra_deps['all-gpu'] = sorted({dep for deps in extra_deps.values() for dep in deps})
 
 package_name = 'scuola'
 
