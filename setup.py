@@ -44,7 +44,7 @@ install_requires = [
     "vllm>=0.8.2",
     "transformers>=4.51",
     "accelerate==1.4.0",
-    "datasets==3.3.2",
+    "datasets==3.5.0",
     "deepspeed==0.16.4",
     "wandb==0.19.7",
     "ipykernel==6.29.5",
