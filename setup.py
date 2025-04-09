@@ -55,7 +55,7 @@ install_requires = [
 extra_deps = {}
 
 extra_deps['gpu-flash2'] = [
-    "flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.2.post1/flash_attn-2.7.2.post1+cu12torch2.5cxx11abiFALSE-cp310-cp310-linux_x86_64.whl",
+    'flash-attn==2.7.4.post1',
 ]
 
 extra_deps['dev'] = [
