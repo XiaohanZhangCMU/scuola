@@ -128,5 +128,5 @@ setup(
     classifiers=classifiers,
     install_requires=install_requires,
     extras_require=extra_deps,
-    python_requires='>=3.12',
+    python_requires='>=3.11',
 )
