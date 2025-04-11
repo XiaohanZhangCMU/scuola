@@ -40,11 +40,11 @@ classifiers = [
 ]
 
 install_requires = [
-    'llmfoundry>=0.19.0',
+    'llm-foundry>=0.19.0',
     'mosaicml[mlflow]>=0.30.0,<0.31',
     'mosaicml-streaming>=0.12.0,<0.13',
     "vllm>=0.8.2",
-    "transformers>=4.51",
+    "transformers>=4.4",
     "datasets==3.3.2",
 ]
 
@@ -69,7 +69,7 @@ extra_deps['dev'] = [
 ]
 
 extra_deps['docs'] = [
-    'GitPython==3.1.42',
+    'GitPython==3.1.43',
     'docutils==0.17.1',
     'furo==2022.9.29',
     'myst-parser==0.16.1',

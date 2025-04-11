@@ -10,6 +10,8 @@ import re
 import time
 import logging
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from dataclasses import dataclass, fields
+from omegaconf import DictConfig
 
 import numpy as np
 import torch
@@ -19,7 +21,7 @@ from tqdm import trange
 from vllm import LLM, SamplingParams
 
 from composer.checkpoint.load import load_checkpoint
-from composer.utils import dist
+from composer.utils import dist, get_device
 
 from llmfoundry.utils.builders import (
     build_tokenizer,
@@ -29,10 +31,15 @@ from llmfoundry.utils.builders import (
     build_composer_model,
 )
 from llmfoundry.utils.config_utils import (
+    TrainConfig,
     process_init_device,
     update_batch_size_info,
+    make_dataclass_and_log_config,
 )
-from composer.utils import get_device
+from llmfoundry.utils import (
+    find_mosaicml_logger,
+    maybe_create_mosaicml_logger,
+)
 
 from scuola.utils import (
     load_model_into_vllm,
@@ -60,6 +67,10 @@ PROMPT_TEMPLATE = (
 
 log = logging.getLogger(__name__)
 
+@dataclass
+class PPOTrainConfig(TrainConfig):
+    vllm_config: Optional[dict[str, Any]] = None
+    ppo_config: Optional[dict[str, Any]] = None
 
 # Load and process dataset
 def preprocess_example(
@@ -83,8 +94,8 @@ def preprocess_example(
     prompt = tokenizer.decode(input_ids, skip_special_tokens=False, clean_up_tokenization_spaces=False)
     return {"prompt": prompt, "input_ids": input_ids, "nums": numbers, "target": target}
 
-def data_prep(tokenizer):
-    dataset = load_dataset("Jiayi-Pan/Countdown-Tasks-3to4", split="train")
+def data_prep(tokenizer, llm_dataset):
+    dataset = load_dataset(llm_dataset, split="train")
     dataset = dataset.map(
         preprocess_example,
         num_proc=6,
@@ -371,82 +382,94 @@ def compute_pg_loss(
     return loss, metrics
 
 
-def main():
-    args = parse_args()
+def main(cfg: DictConfig):
 
-    # Load Composer configuration
-    from omegaconf import OmegaConf
-    config = OmegaConf.load(args.config_path)
-    train_cfg = config.train
+    TRAIN_CONFIG_KEYS = {field.name for field in fields(PPOTrainConfig)}
+
+    logged_cfg, cfg = make_dataclass_and_log_config(
+        cfg,
+        PPOTrainConfig,
+        TRAIN_CONFIG_KEYS,
+        transforms='all',
+    )
 
     # Get model configuration components
-    fsdp_config = train_cfg.get('fsdp_config', None)
-    tp_config = train_cfg.get('tp_config', None)
+    fsdp_config: Optional[dict[str, Any]] = cfg.fsdp_config
+    tp_config: Optional[dict[str, Any]] = cfg.tp_config
+    vllm_config: Optional[dict[str, Any]] = cfg.vllm_config
+    model_config: Optional[dict[str, Any]] = cfg.model
 
-    model_name = "meta-llama/Llama-2-7b-hf"
-    per_device_batch_size = 4
+    model_name = model_config.get('name', "hf_causal_lm")
+    per_device_batch_size = cfg.global_train_batch_size // dist.get_world_size()
+    accumulation_steps = per_device_batch_size // cfg.device_train_microbatch_size
 
     # Set up distributed training
     device = get_device(None)
-    dist.initialize_dist(device, timeout=train_cfg.get('dist_timeout', 600.0))
+    dist.initialize_dist(device, timeout=cfg.dist_timeout)
     dist.barrier()
 
-    # Build logger
-    logger = build_logger(train_cfg.get('logger_type', 'wandb'), train_cfg.get('logger_cfg', {}))
+    # Build loggers
+    loggers = [
+        build_logger(str(name), logger_cfg)
+        for name, logger_cfg in cfg.loggers.items()
+    ] if cfg.loggers else []
+
+    mosaicml_logger = find_mosaicml_logger(loggers)
+    if mosaicml_logger is None:
+        mosaicml_logger = maybe_create_mosaicml_logger()
+        if mosaicml_logger is not None:
+            loggers.append(mosaicml_logger)
 
     # Build tokenizer
     tokenizer = build_tokenizer(
-        tokenizer_name=train_cfg.tokenizer.get('name', model_name),
-        tokenizer_kwargs=train_cfg.tokenizer.get('kwargs', {})
+        tokenizer_name=cfg.tokenizer.get('name', model_name),
+        tokenizer_kwargs=cfg.tokenizer.get('kwargs', {})
     )
 
     # Initialize models
-    init_context = process_init_device(train_cfg.model, fsdp_config, tp_config)
+    init_context = process_init_device(cfg.model, fsdp_config, tp_config)
 
     # Build policy model with Composer
+    name = model_config.pop('name')
+    assert isinstance(name, str)
+    print(type(model_config))
+    assert isinstance(model_config, dict)
     policy_model = build_composer_model(
-        name=train_cfg.model.get('name', model_name),
+        name=model_name,
         tokenizer=tokenizer,
         init_context=init_context,
-        model_config=train_cfg.model
+        master_weights_dtype=model_config.pop('master_weights_dtype', None),
+        cfg=model_config
     )
 
     # Build reference model (frozen copy of policy model)
     reference_model = build_composer_model(
-        name=train_cfg.model.get('name', model_name),
+        name=model_name,
         tokenizer=tokenizer,
         init_context=init_context,
-        model_config=train_cfg.model
+        master_weights_dtype=model_config.pop('master_weights_dtype', None),
+        cfg=model_config
     )
     reference_model.eval()
-
-    # Build optimizer
-    optimizer = build_optimizer(
-        policy_model.parameters(),
-        optimizer_name=train_cfg.optimizer.get('name', 'decoupled_adamw'),
-        optimizer_config=train_cfg.optimizer
-    )
-
-    # Build algorithms if any
-    algorithms = []
-    if 'algorithms' in train_cfg:
-        for name, config in train_cfg.algorithms.items():
-            algorithms.append(build_algorithm(name=name, **config))
 
     # Get tokenizer components
     EOS_TOKEN_ID = tokenizer.eos_token_id
     EOS_TOKEN = tokenizer.convert_ids_to_tokens(EOS_TOKEN_ID)
 
     # Prepare datasets
-    train_dataset, test_dataset = data_prep(tokenizer)
+    train_dataset, test_dataset = data_prep(tokenizer, "Jiayi-Pan/Countdown-Tasks-3to4")
     log.info(f"Train dataset size: {len(train_dataset)}")
     log.info(f"Test dataset size: {len(test_dataset)}")
 
+    # Optimizer
+    optimizer_name: str = cfg.optimizer.pop('name')
+    optimizer = build_optimizer(policy_model, optimizer_name, cfg.optimizer)
+
     # Initialize vLLM for inference
     inference_engine = LLM(
-        model=model_name,
-        enable_sleep_mode=True,
-        tensor_parallel_size=args.inference_tp_size,
+        model=model_config.get('pretrained_model_name_or_path', ''),
+        enable_sleep_mode=vllm_config.get('enable_sleep_mode', True),
+        tensor_parallel_size=vllm_config.get('inference_tp_size', 2),
         distributed_executor_backend="external_launcher",
         dtype=torch.bfloat16,
         enforce_eager=True,
@@ -615,7 +638,7 @@ def main():
             loss.backward()
 
             # Only free memory if we're at gradient accumulation boundary
-            if (i + per_device_batch_size) % train_cfg.get('grad_accum', 1) == 0:
+            if i % accumulation_step == 0:
                 optimizer.step()
                 optimizer.zero_grad()
                 reference_model.to('cpu')
@@ -669,3 +692,12 @@ def main():
         selected_metrics = {k: logs[k] for k in selected_keys if k in logs}
         log.info(f"KEY METRICS: {selected_metrics}")
 
+if __name__ == "__main__":
+    config_path = "yamls/llama-3b-ppo-8gpu.yaml"
+
+    # Load Composer configuration
+    from omegaconf import OmegaConf
+    with open(config_path) as f:
+        config = OmegaConf.load(f)
+
+    main(config)
