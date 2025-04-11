@@ -3,10 +3,9 @@ import socket
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import torch
-import wandb
 from datasets import Dataset
-from deepspeed import DeepSpeedEngine
+import torch
+from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
 from transformers import AutoTokenizer, PreTrainedModel
 from vllm import LLM, SamplingParams
 
@@ -263,11 +262,10 @@ def evaluate_on_test_set(
 def dump_episodes(
     episodes: Dict[str, Any],
     episodes_stats: Dict[str, Any],
-    exp_dir: Path,
     tokenizer: AutoTokenizer,
     iteration: int,
     is_eval: bool = False,
-) -> wandb.Table:
+) -> list[list[Any]]:
     query_token_ids = episodes["all_query_token_ids"]
     response_token_ids = episodes["all_response_token_ids"]
     rewards = episodes_stats["rewards"]
@@ -291,46 +289,17 @@ def dump_episodes(
         print(f"#### Query:\n`{query_texts[1]}`")
         print(f"#### Response:\n`{response_texts[1]}`\n\n")
 
-    if is_eval:
-        episodes_dir = exp_dir / "eval_episodes"
-    else:
-        episodes_dir = exp_dir / "episodes"
-    episodes_dir.mkdir(parents=True, exist_ok=True)
-
-    with open(episodes_dir / f"eps_{iteration:06d}.json", "w") as f:
-        json.dump(
-            [
-                {
-                    "query": query_texts[i],
-                    "response": response_texts[i],
-                    "reward": rewards[i],
-                }
-                for i in range(len(query_texts))
-            ],
-            f,
-        )
-
-    # Create wandb table
-    table = wandb.Table(columns=["query", "response", "reward", "response_length"])
+    table = []
     for i in range(len(query_texts)):
-        table.add_data(query_texts[i], response_texts[i], rewards[i], response_lengths[i])
+        table.append([query_texts[i], response_texts[i], rewards[i], response_lengths[i]])
+
+    log_table(columns=["query", "response", "reward", "response_length"], rows=table)
 
     return table
 
 
-def find_last_checkpoint(exp_dir: Path) -> Tuple[Optional[Path], Optional[int]]:
-    checkpoint_dir = exp_dir / "checkpoints"
-    checkpoints = list(checkpoint_dir.glob("ckpt_*"))
-    # Filter out directories that don't have a deepspeed subdirectory
-    checkpoints = [ckpt for ckpt in checkpoints if (ckpt / "deepspeed").exists()]
-    if not checkpoints:
-        return None, None
-    ckpt_path = max(checkpoints, key=lambda x: int(x.stem.split("_")[-1]))
-    ckpt_iter = int(ckpt_path.stem.split("_")[-1])
-    return ckpt_path, ckpt_iter
 
-
-def load_model_into_vllm(model: Union[DeepSpeedEngine, PreTrainedModel], llm: LLM) -> None:
+def load_model_into_vllm(model: FSDP, llm: LLM) -> None:
     """
     Load weights from a HuggingFace model (either wrapped in DeepSpeed or not) into a vLLM inference engine.
 
@@ -347,4 +316,7 @@ def load_model_into_vllm(model: Union[DeepSpeedEngine, PreTrainedModel], llm: LL
         None
     """
     state_dict = model.module.state_dict() if isinstance(model, DeepSpeedEngine) else model.state_dict()
+    FSDP.set_state_dict_type(module,
+                             state_dict_type=StateDictType.FULL_STATE_DICT,
+                             state_dict_config=FullStateDictConfig())
     llm.llm_engine.model_executor.driver_worker.model_runner.model.load_weights(state_dict.items())

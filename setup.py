@@ -40,16 +40,11 @@ classifiers = [
 ]
 
 install_requires = [
-    "torch>=2.6,<3",
+    'mosaicml[mlflow]>=0.30.0,<0.31',
+    'mosaicml-streaming>=0.12.0,<0.13',
     "vllm>=0.8.2",
     "transformers>=4.51",
-    "accelerate==1.4.0",
     "datasets==3.3.2",
-    "deepspeed==0.16.4",
-    "wandb==0.19.7",
-    "ipykernel==6.29.5",
-    "ipywidgets==8.1.5",
-    "jupyter==1.1.1",
 ]
 
 extra_deps = {}
