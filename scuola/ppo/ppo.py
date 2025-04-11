@@ -482,6 +482,7 @@ def main(cfg: DictConfig):
         enable_chunked_prefill=True,
         enable_prefix_caching=True,
         trust_remote_code=True,
+        seed=19,
     )
 
     # Resume from checkpoint if specified
