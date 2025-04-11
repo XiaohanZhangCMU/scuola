@@ -485,19 +485,6 @@ def main(cfg: DictConfig):
         seed=19,
     )
 
-    # Resume from checkpoint if specified
-    begin_iter = 0
-    if args.ckpt_path is not None:
-        log.info(f"Resuming from checkpoint {args.ckpt_path}")
-        load_checkpoint(args.ckpt_path, policy_model)
-        # Extract iteration from checkpoint name
-        ckpt_name = os.path.basename(args.ckpt_path)
-        if "ckpt_" in ckpt_name and ".pt" in ckpt_name:
-            begin_iter = int(ckpt_name.split("ckpt_")[1].split(".pt")[0])
-
-        # Load weights into vLLM
-        load_model_into_vllm(policy_model, inference_engine)
-
     # Main training loop
     for iteration in trange(begin_iter, ppo_cfg.num_iterations):
         log.info(f"Iteration {iteration}/{ppo_cfg.num_iterations}")
