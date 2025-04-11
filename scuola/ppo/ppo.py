@@ -36,7 +36,7 @@ from llmfoundry.utils.config_utils import (
 from composer.trainer import Trainer
 from composer.utils import get_device
 
-from utils import (
+from scuola.utils import (
     load_model_into_vllm,
     compute_token_log_probs,
     evaluate_on_test_set,
