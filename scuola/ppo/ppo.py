@@ -18,7 +18,7 @@ from datasets import load_dataset
 from tqdm import trange
 from vllm import LLM, SamplingParams
 
-from composer.checkpoint import load_checkpoint
+from composer.checkpoint.load import load_checkpoint
 from composer.loggers import LoggerDestination
 from composer.utils import dist as dist_utils
 
