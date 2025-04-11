@@ -106,7 +106,7 @@ def prepare_model_inputs(
 
 
 def compute_token_log_probs(
-    model: Union[DeepSpeedEngine, PreTrainedModel],
+    model: Union[ComposerModel],
     inputs: Dict[str, torch.Tensor],
     temperature: float,
 ) -> torch.Tensor:
@@ -121,7 +121,7 @@ def compute_token_log_probs(
     5. Masks the log probabilities to only include valid labels (non -100 positions)
 
     Args:
-        model: The language model (either DeepSpeed-wrapped or regular HuggingFace model)
+        model: The language model (ComposerModel)
         inputs: Dictionary containing:
             - input_ids: Tensor of token ids [batch_size, seq_len]
             - attention_mask: Tensor of attention mask [batch_size, seq_len]
@@ -299,23 +299,22 @@ def dump_episodes(
 
 
 
-def load_model_into_vllm(model: FSDP, llm: LLM) -> None:
+def load_model_into_vllm(model: ComposerModel, llm: LLM) -> None:
     """
-    Load weights from a HuggingFace model (either wrapped in DeepSpeed or not) into a vLLM inference engine.
+    Load weights from a ComposerModel into a vLLM inference engine.
 
     This function transfers the weights from a training model to a vLLM inference engine,
     allowing for efficient inference using the updated model weights.
 
     Args:
-        model (Union[DeepSpeedEngine, PreTrainedModel]): The source model to copy weights from.
-            Can be either a DeepSpeed-wrapped model or a regular HuggingFace PreTrainedModel.
+        model (ComposerModel): The source model to copy weights from.
         vllm (LLM): The target vLLM inference engine to load the weights into.
             Must be already initialized and ready to accept new weights.
 
     Returns:
         None
     """
-    state_dict = model.module.state_dict() if isinstance(model, DeepSpeedEngine) else model.state_dict()
+    state_dict = model.module.state_dict() if isinstance(model, ComposerModel) else model.state_dict()
     FSDP.set_state_dict_type(module,
                              state_dict_type=StateDictType.FULL_STATE_DICT,
                              state_dict_config=FullStateDictConfig())
