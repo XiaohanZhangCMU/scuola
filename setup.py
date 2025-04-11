@@ -40,6 +40,7 @@ classifiers = [
 ]
 
 install_requires = [
+    'llmfoundry>=0.19.0',
     'mosaicml[mlflow]>=0.30.0,<0.31',
     'mosaicml-streaming>=0.12.0,<0.13',
     "vllm>=0.8.2",

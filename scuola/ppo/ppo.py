@@ -13,14 +13,13 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
-import torch.distributed as dist
+import mlflow
 from datasets import load_dataset
 from tqdm import trange
 from vllm import LLM, SamplingParams
 
 from composer.checkpoint.load import load_checkpoint
-from composer.loggers import LoggerDestination
-from composer.utils import dist as dist_utils
+from composer.utils import dist
 
 from llmfoundry.utils.builders import (
     build_tokenizer,
@@ -33,7 +32,6 @@ from llmfoundry.utils.config_utils import (
     process_init_device,
     update_batch_size_info,
 )
-from composer.trainer import Trainer
 from composer.utils import get_device
 
 from scuola.utils import (
