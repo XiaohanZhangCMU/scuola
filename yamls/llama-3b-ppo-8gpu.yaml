@@ -4,6 +4,8 @@ model:
   pretrained: true
   pretrained_model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
 
+# load_path: oci://mosaicml-internal-integration-testing/elastic_resumption_1_to_2_node/ep0-ba10
+
 # Tokenizer
 tokenizer:
   name: Qwen/Qwen2.5-0.5B-Instruct
