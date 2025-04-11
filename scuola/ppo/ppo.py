@@ -346,11 +346,11 @@ def main():
     args = parser.parse_args()
 
     # Needed to stop DeepSpeed from complaining
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(find_free_port())
-    os.environ["RANK"] = "0"
-    os.environ["LOCAL_RANK"] = "0"
-    os.environ["WORLD_SIZE"] = "1"
+    # os.environ["MASTER_ADDR"] = "localhost"
+    #os.environ["MASTER_PORT"] = str(find_free_port())
+    #os.environ["RANK"] = "0"
+    # os.environ["LOCAL_RANK"] = "0"
+    # os.environ["WORLD_SIZE"] = "8"
 
     ############################################
     # Hyperparameters
@@ -364,7 +364,7 @@ def main():
     # Total number of training iterations
     NUM_ITERATIONS = 1000
     # Number of episodes to collect per iteration for training
-    EPISODES_PER_ITERATION = 64
+    EPISODES_PER_ITERATION = 256
     # Number of responses to generate for each input prompt
     GENERATIONS_PER_SAMPLE = 4
     # Controls how much the policy can deviate from the reference model
@@ -372,7 +372,7 @@ def main():
 
     # Training hyperparameters
     # Batch size for each GPU device during training
-    PER_DEVICE_BATCH_SIZE = 4
+    PER_DEVICE_BATCH_SIZE = 2
     # Learning rate for model updates
     LEARNING_RATE = 1e-6
 
@@ -392,7 +392,7 @@ def main():
         "zero_optimization": {"stage": 2, "overlap_comm": False},
         "train_batch_size": EPISODES_PER_ITERATION,
         "train_micro_batch_size_per_gpu": PER_DEVICE_BATCH_SIZE,
-        "gradient_accumulation_steps": EPISODES_PER_ITERATION // PER_DEVICE_BATCH_SIZE,
+        "gradient_accumulation_steps": EPISODES_PER_ITERATION // PER_DEVICE_BATCH_SIZE // 8,
         "gradient_clipping": 1.0,
         "optimizer": {
             "type": "AdamW",
@@ -409,7 +409,7 @@ def main():
         "bf16": {"enabled": True},
         "train_batch_size": EPISODES_PER_ITERATION,
         "train_micro_batch_size_per_gpu": PER_DEVICE_BATCH_SIZE,
-        "gradient_accumulation_steps": EPISODES_PER_ITERATION // PER_DEVICE_BATCH_SIZE,
+        "gradient_accumulation_steps": EPISODES_PER_ITERATION // PER_DEVICE_BATCH_SIZE // 8,
     }
 
     model_name_short = MODEL_NAME.split("/")[-1]
@@ -465,14 +465,20 @@ def main():
         MODEL_NAME,
         attn_implementation="flash_attention_2",
         torch_dtype=torch.bfloat16,
-        device_map=0,
+        device_map="auto",
     )
+
+    print("policy model loaded")
+
     reference_model = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
         attn_implementation="flash_attention_2",
         torch_dtype=torch.bfloat16,
-        device_map=0,
+        device_map="auto",
     )
+
+    print("reference model loaded")
+
     policy_model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 
     # Initialize DeepSpeed engines
