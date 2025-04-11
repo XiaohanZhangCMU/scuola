@@ -22,12 +22,12 @@ from composer.checkpoint.load import load_checkpoint
 from composer.loggers import LoggerDestination
 from composer.utils import dist as dist_utils
 
-from llmfoundry.models import build_composer_model
 from llmfoundry.utils.builders import (
     build_tokenizer,
     build_optimizer,
     build_logger,
     build_algorithm,
+    build_composer_model,
 )
 from llmfoundry.utils.config_utils import (
     process_init_device,
