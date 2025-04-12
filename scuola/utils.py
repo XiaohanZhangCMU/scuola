@@ -8,6 +8,7 @@ import torch
 from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
 from transformers import AutoTokenizer, PreTrainedModel
 from composer import ComposerModel
+from composer.loggers.mlflow_logger import MLFlowLogger
 from vllm import LLM, SamplingParams
 
 DEFAULT_SYSTEM_MESSAGE = "You are a helpful assistant. You first think about the reasoning process in the mind and then provide the user with the answer."
