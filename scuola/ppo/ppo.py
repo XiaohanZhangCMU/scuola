@@ -499,8 +499,8 @@ def main(cfg: DictConfig):
         load_model_into_vllm(policy_model, inference_engine)
 
     # Main training loop
-    for iteration in trange(begin_iter, ppo_cfg.num_iterations):
-        log.info(f"Iteration {iteration}/{ppo_cfg.num_iterations}")
+    for iteration in trange(begin_iter, cfg.ppo_cfg.num_iterations):
+        log.info(f"Iteration {iteration}/{cfg.ppo_cfg.num_iterations}")
 
         metrics = {}
 
@@ -533,7 +533,7 @@ def main(cfg: DictConfig):
             logger.log({"eval/episodes": eval_episode_table, "iteration": iteration})
 
         # Sample training batch
-        num_samples = ppo_cfg.episodes_per_iteration // ppo_cfg.generations_per_sample
+        num_samples = cfg.ppo_cfg.episodes_per_iteration // cfg.ppo_cfg.generations_per_sample
         indices = np.random.choice(len(train_dataset), size=num_samples, replace=False)
         samples = train_dataset.select(indices)
 
@@ -543,11 +543,11 @@ def main(cfg: DictConfig):
         outputs = inference_engine.generate(
             prompt_token_ids=samples["input_ids"],
             sampling_params=SamplingParams(
-                n=ppo_cfg.generations_per_sample,
-                temperature=ppo_cfg.temperature,
-                top_p=ppo_cfg.top_p,
-                top_k=ppo_cfg.top_k,
-                max_tokens=ppo_cfg.max_response_tokens,
+                n=cfg.ppo_cfg.generations_per_sample,
+                temperature=cfg.ppo_cfg.temperature,
+                top_p=cfg.ppo_cfg.top_p,
+                top_k=cfg.ppo_cfg.top_k,
+                max_tokens=cfg.ppo_cfg.max_response_tokens,
                 detokenize=False,
                 stop_token_ids=[EOS_TOKEN_ID],
             ),
@@ -571,7 +571,7 @@ def main(cfg: DictConfig):
             tokenizer,
             EOS_TOKEN_ID,
             EOS_TOKEN,
-            ppo_cfg.generations_per_sample,
+            cfg.ppo_cfg.generations_per_sample,
         )
         for k, v in episodes_stats.items():
             metrics.setdefault(k, []).extend(v)
@@ -606,7 +606,7 @@ def main(cfg: DictConfig):
 
         for i in trange(
             0,
-            ppo_cfg.episodes_per_iteration,
+            cfg.ppo_cfg.episodes_per_iteration,
             per_device_batch_size,
             desc="Gradient Accumulation",
         ):
@@ -618,8 +618,8 @@ def main(cfg: DictConfig):
                 reference_model=reference_model,
                 batch=batch,
                 total_response_len=total_response_len,
-                temperature=ppo_cfg.temperature,
-                kl_coefficient=ppo_cfg.kl_coeff,
+                temperature=cfg.ppo_cfg.temperature,
+                kl_coefficient=cfg.ppo_cfg.kl_coeff,
             )
 
             # Track metrics
