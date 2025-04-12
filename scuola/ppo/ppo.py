@@ -398,6 +398,7 @@ def main(cfg: DictConfig):
     tp_config: Optional[dict[str, Any]] = cfg.tp_config
     vllm_config: Optional[dict[str, Any]] = cfg.vllm_config
     model_config: Optional[dict[str, Any]] = cfg.model
+    ppo_config: Optional[dict[str, Any]] = cfg.ppo_config
 
     model_name = model_config.get('name', "hf_causal_lm")
     per_device_batch_size = cfg.global_train_batch_size // dist.get_world_size()
