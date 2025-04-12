@@ -418,10 +418,10 @@ def main(cfg: DictConfig):
     ] if cfg.loggers else []
 
     mlflow_logger = next(
-        (logger for logger in loggers if isinstance(logger, PPOMLFlowLogger)),
+        (logger for logger in loggers if isinstance(logger, MLFlowLogger)),
         None,
     )
-    mlflow_logger.init()
+    init_mlflow(mlflow_logger)
 
     mosaicml_logger = find_mosaicml_logger(loggers)
     if mosaicml_logger is None:

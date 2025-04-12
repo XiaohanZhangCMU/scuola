@@ -327,36 +327,19 @@ def load_model_into_vllm(model: ComposerModel, llm: LLM) -> None:
 
 
 
-class PPOMLFlowLogger(MLFlowLogger):
-    def init(self) -> None:
+def init_mlflow(logger: MLFlowLogger) -> None:
 
-        if self.run_name is None:
-            self.run_name = state.run_name
+    # Adjust name and group based on `rank_zero_only`.
+    if not logger._rank_zero_only:
+        logger.run_name += f'-rank{dist.get_global_rank()}'
 
-        self._global_exception_occurred = 0
+    # Start run
+    if logger._enabled:
+        logger_start_mlflow_run(None)
 
-        # Store the Composer run name in the MLFlow run tags so it can be retrieved for autoresume
-        self.tags['run_name'] = os.environ.get('RUN_NAME', state.run_name)
-
-        # Adjust name and group based on `rank_zero_only`.
-        if not self._rank_zero_only:
-            self.run_name += f'-rank{dist.get_global_rank()}'
-
-        # Register the global exception handler so that uncaught exception is tracked.
-        original_excepthook = sys.excepthook
-        sys.excepthook = lambda exc_type, exc_value, exc_traceback: self._global_exception_handler(
-            original_excepthook,
-            exc_type,
-            exc_value,
-            exc_traceback,
-        )
-        # Start run
-        if self._enabled:
-            self._start_mlflow_run(state)
-
-        # If rank zero only, broadcast the MLFlow experiment and run IDs to other ranks, so the MLFlow run info is
-        # available to other ranks during runtime.
-        if self._rank_zero_only:
-            mlflow_ids_list = [self._experiment_id, self._run_id]
-            dist.broadcast_object_list(mlflow_ids_list, src=0)
-            self._experiment_id, self._run_id = mlflow_ids_list
+    # If rank zero only, broadcast the MLFlow experiment and run IDs to other ranks, so the MLFlow run info is
+    # available to other ranks during runtime.
+    if logger._rank_zero_only:
+        mlflow_ids_list = [self._experiment_id, self._run_id]
+        dist.broadcast_object_list(mlflow_ids_list, src=0)
+        logger._experiment_id, logger._run_id = mlflow_ids_list
