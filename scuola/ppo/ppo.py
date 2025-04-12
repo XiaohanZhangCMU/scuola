@@ -359,9 +359,9 @@ def compute_pg_loss(
     labels_mask = (labels[..., 1:] != -100).float()  # [batch_size, seq_len-1]
 
     with torch.no_grad():
-        ref_logps = compute_token_log_probs(reference_model, model_inputs, ppo_cfg.temperature)  # [batch_size, seq_len-1]
+        ref_logps = compute_token_log_probs(reference_model, model_inputs, ppo_config.temperature)  # [batch_size, seq_len-1]
 
-    logps = compute_token_log_probs(policy_model, model_inputs, ppo_cfg.temperature)  # [batch_size, seq_len-1]
+    logps = compute_token_log_probs(policy_model, model_inputs, ppo_config.temperature)  # [batch_size, seq_len-1]
 
     kl_penalty = torch.exp(ref_logps - logps) - (ref_logps - logps) - 1  # [batch_size, seq_len-1]
     kl_penalty = kl_penalty * labels_mask  # [batch_size, seq_len-1]
@@ -371,7 +371,7 @@ def compute_pg_loss(
     policy_loss = -logps * advantages[..., 1:]  # [batch_size, seq_len-1]
     policy_loss = policy_loss * labels_mask  # [batch_size, seq_len-1]
 
-    loss = (policy_loss + ppo_cfg.kl_coeff * kl_penalty).sum() / total_response_len  # scalar
+    loss = (policy_loss + ppo_config.kl_coeff * kl_penalty).sum() / total_response_len  # scalar
 
     metrics = {
         "policy_loss": policy_loss.sum().item() / total_response_len,
@@ -499,8 +499,8 @@ def main(cfg: DictConfig):
         load_model_into_vllm(policy_model, inference_engine)
 
     # Main training loop
-    for iteration in trange(begin_iter, cfg.ppo_cfg.num_iterations):
-        log.info(f"Iteration {iteration}/{cfg.ppo_cfg.num_iterations}")
+    for iteration in trange(begin_iter, cfg.ppo_config.num_iterations):
+        log.info(f"Iteration {iteration}/{cfg.ppo_config.num_iterations}")
 
         metrics = {}
 
@@ -533,7 +533,7 @@ def main(cfg: DictConfig):
             logger.log({"eval/episodes": eval_episode_table, "iteration": iteration})
 
         # Sample training batch
-        num_samples = cfg.ppo_cfg.episodes_per_iteration // cfg.ppo_cfg.generations_per_sample
+        num_samples = cfg.ppo_config.episodes_per_iteration // cfg.ppo_config.generations_per_sample
         indices = np.random.choice(len(train_dataset), size=num_samples, replace=False)
         samples = train_dataset.select(indices)
 
@@ -543,11 +543,11 @@ def main(cfg: DictConfig):
         outputs = inference_engine.generate(
             prompt_token_ids=samples["input_ids"],
             sampling_params=SamplingParams(
-                n=cfg.ppo_cfg.generations_per_sample,
-                temperature=cfg.ppo_cfg.temperature,
-                top_p=cfg.ppo_cfg.top_p,
-                top_k=cfg.ppo_cfg.top_k,
-                max_tokens=cfg.ppo_cfg.max_response_tokens,
+                n=cfg.ppo_config.generations_per_sample,
+                temperature=cfg.ppo_config.temperature,
+                top_p=cfg.ppo_config.top_p,
+                top_k=cfg.ppo_config.top_k,
+                max_tokens=cfg.ppo_config.max_response_tokens,
                 detokenize=False,
                 stop_token_ids=[EOS_TOKEN_ID],
             ),
@@ -571,7 +571,7 @@ def main(cfg: DictConfig):
             tokenizer,
             EOS_TOKEN_ID,
             EOS_TOKEN,
-            cfg.ppo_cfg.generations_per_sample,
+            cfg.ppo_config.generations_per_sample,
         )
         for k, v in episodes_stats.items():
             metrics.setdefault(k, []).extend(v)
@@ -606,7 +606,7 @@ def main(cfg: DictConfig):
 
         for i in trange(
             0,
-            cfg.ppo_cfg.episodes_per_iteration,
+            cfg.ppo_config.episodes_per_iteration,
             per_device_batch_size,
             desc="Gradient Accumulation",
         ):
@@ -618,8 +618,8 @@ def main(cfg: DictConfig):
                 reference_model=reference_model,
                 batch=batch,
                 total_response_len=total_response_len,
-                temperature=cfg.ppo_cfg.temperature,
-                kl_coefficient=cfg.ppo_cfg.kl_coeff,
+                temperature=cfg.ppo_config.temperature,
+                kl_coefficient=cfg.ppo_config.kl_coeff,
             )
 
             # Track metrics
