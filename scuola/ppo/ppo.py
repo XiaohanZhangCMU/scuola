@@ -22,7 +22,6 @@ from vllm import LLM, SamplingParams
 
 from composer.checkpoint.load import load_checkpoint
 from composer.utils import dist, get_device
-from composer.loggers.mlflow_logger import PPOMLFlowLogger
 
 from llmfoundry.utils.builders import (
     build_tokenizer,
@@ -48,6 +47,7 @@ from scuola.utils import (
     evaluate_on_test_set,
     dump_episodes,
     prepare_model_inputs,
+    PPOMLFlowLogger,
 )
 
 
