@@ -261,6 +261,7 @@ def evaluate_on_test_set(
 
 
 def dump_episodes(
+    logger: MLFlowLogger,
     episodes: Dict[str, Any],
     episodes_stats: Dict[str, Any],
     tokenizer: AutoTokenizer,
@@ -294,7 +295,7 @@ def dump_episodes(
     for i in range(len(query_texts)):
         table.append([query_texts[i], response_texts[i], rewards[i], response_lengths[i]])
 
-    log_table(columns=["query", "response", "reward", "response_length"], rows=table)
+    logger.log_table(columns=["query", "response", "reward", "response_length"], rows=table)
 
     return table
 

@@ -415,11 +415,13 @@ def main(cfg: DictConfig):
         for name, logger_cfg in cfg.loggers.items()
     ] if cfg.loggers else []
 
+    mlflow_logger = next(
+        (logger for logger in loggers if isinstance(logger, MLFlowLogger)),
+        None,
+    )
     mosaicml_logger = find_mosaicml_logger(loggers)
     if mosaicml_logger is None:
         mosaicml_logger = maybe_create_mosaicml_logger()
-        if mosaicml_logger is not None:
-            loggers.append(mosaicml_logger)
 
     # Build tokenizer
     tokenizer = build_tokenizer(
@@ -525,13 +527,14 @@ def main(cfg: DictConfig):
                 reward_func=lambda completion, sample: compute_reward(completion, sample, EOS_TOKEN),
             )
             eval_episode_table = dump_episodes(
+                mlflow_logger,
                 episodes=eval_episodes,
                 episodes_stats=eval_stats,
                 tokenizer=tokenizer,
                 iteration=iteration,
                 is_eval=True,
             )
-            logger.log({"eval/episodes": eval_episode_table, "iteration": iteration})
+            mosaicml_logger.log({"eval/episodes": eval_episode_table, "iteration": iteration})
 
         # Sample training batch
         num_samples = ppo_config.get("episodes_per_iteration") // ppo_config.get("generations_per_sample")
@@ -578,6 +581,7 @@ def main(cfg: DictConfig):
             metrics.setdefault(k, []).extend(v)
 
         episode_table = dump_episodes(
+            mlflow_logger,
             episodes=episodes,
             episodes_stats=episodes_stats,
             tokenizer=tokenizer,
@@ -676,11 +680,7 @@ def main(cfg: DictConfig):
         if eval_stats is not None:
             logs.update({f"eval/{k}": np.mean(v) for k, v in eval_stats.items()})
 
-        if isinstance(logger, list):
-            for log_dest in logger:
-                log_dest.log(logs, step=iteration)
-        else:
-            logger.log(logs)
+        mosaicml_logger.log(logs)
 
         selected_keys = [
             "train/kl_penalty",
