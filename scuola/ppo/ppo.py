@@ -22,7 +22,7 @@ from vllm import LLM, SamplingParams
 
 from composer.checkpoint.load import load_checkpoint
 from composer.utils import dist, get_device
-from composer.loggers.mlflow_logger import MLFlowLogger
+from composer.loggers.mlflow_logger import PPOMLFlowLogger
 
 from llmfoundry.utils.builders import (
     build_tokenizer,
@@ -72,6 +72,7 @@ log = logging.getLogger(__name__)
 class PPOTrainConfig(TrainConfig):
     vllm_config: Optional[dict[str, Any]] = None
     ppo_config: Optional[dict[str, Any]] = None
+
 
 # Load and process dataset
 def preprocess_example(
@@ -417,9 +418,11 @@ def main(cfg: DictConfig):
     ] if cfg.loggers else []
 
     mlflow_logger = next(
-        (logger for logger in loggers if isinstance(logger, MLFlowLogger)),
+        (logger for logger in loggers if isinstance(logger, PPOMLFlowLogger)),
         None,
     )
+    mlflow_logger.init()
+
     mosaicml_logger = find_mosaicml_logger(loggers)
     if mosaicml_logger is None:
         mosaicml_logger = maybe_create_mosaicml_logger()

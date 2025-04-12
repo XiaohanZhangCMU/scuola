@@ -9,6 +9,7 @@ from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataP
 from transformers import AutoTokenizer, PreTrainedModel
 from composer import ComposerModel
 from composer.loggers.mlflow_logger import MLFlowLogger
+from composer.utils import dist
 from vllm import LLM, SamplingParams
 
 DEFAULT_SYSTEM_MESSAGE = "You are a helpful assistant. You first think about the reasoning process in the mind and then provide the user with the answer."
@@ -261,6 +262,7 @@ def evaluate_on_test_set(
     return episodes, metrics
 
 
+
 def dump_episodes(
     logger: MLFlowLogger,
     episodes: Dict[str, Any],
@@ -322,3 +324,39 @@ def load_model_into_vllm(model: ComposerModel, llm: LLM) -> None:
                              state_dict_type=StateDictType.FULL_STATE_DICT,
                              state_dict_config=FullStateDictConfig())
     llm.llm_engine.model_executor.driver_worker.model_runner.model.load_weights(state_dict.items())
+
+
+
+class PPOMLFlowLogger(MLFlowLogger):
+    def init(self) -> None:
+
+        if self.run_name is None:
+            self.run_name = state.run_name
+
+        self._global_exception_occurred = 0
+
+        # Store the Composer run name in the MLFlow run tags so it can be retrieved for autoresume
+        self.tags['run_name'] = os.environ.get('RUN_NAME', state.run_name)
+
+        # Adjust name and group based on `rank_zero_only`.
+        if not self._rank_zero_only:
+            self.run_name += f'-rank{dist.get_global_rank()}'
+
+        # Register the global exception handler so that uncaught exception is tracked.
+        original_excepthook = sys.excepthook
+        sys.excepthook = lambda exc_type, exc_value, exc_traceback: self._global_exception_handler(
+            original_excepthook,
+            exc_type,
+            exc_value,
+            exc_traceback,
+        )
+        # Start run
+        if self._enabled:
+            self._start_mlflow_run(state)
+
+        # If rank zero only, broadcast the MLFlow experiment and run IDs to other ranks, so the MLFlow run info is
+        # available to other ranks during runtime.
+        if self._rank_zero_only:
+            mlflow_ids_list = [self._experiment_id, self._run_id]
+            dist.broadcast_object_list(mlflow_ids_list, src=0)
+            self._experiment_id, self._run_id = mlflow_ids_list
