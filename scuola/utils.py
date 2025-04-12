@@ -109,7 +109,7 @@ def prepare_model_inputs(
 
 
 def compute_token_log_probs(
-    model: Union[ComposerModel],
+    model: ComposerModel,
     inputs: Dict[str, torch.Tensor],
     temperature: float,
 ) -> torch.Tensor:
@@ -150,10 +150,10 @@ def compute_token_log_probs(
         >>> # First position is 0 (masked), second position has actual log prob
     """
     outputs = model(
-        input_ids=inputs["input_ids"],
-        attention_mask=inputs["attention_mask"],
-        return_dict=True,
-        use_cache=False,
+            {
+                'input_ids': inputs["input_ids"],
+                'attention_mask':inputs["attention_mask"],
+            }
     )
 
     logits = outputs.logits.float() / temperature  # Shape: [batch_size, seq_len, vocab_size]
