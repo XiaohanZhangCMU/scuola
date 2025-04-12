@@ -602,12 +602,12 @@ def main(cfg: DictConfig):
             query_token_ids=episodes["all_query_token_ids"],
             response_token_ids=episodes["all_response_token_ids"],
             advantages=episodes["all_advantages"],
-            device=device,
+            device=device.device_id,
         )
 
         # Calculate losses and update model
         policy_model.train()
-        reference_model.to(device)
+        reference_model.to(device.device_id)
         reference_model.eval()
 
         total_response_len = (model_inputs["labels"] != -100).sum().item()
