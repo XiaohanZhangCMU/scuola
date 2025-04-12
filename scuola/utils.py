@@ -335,11 +335,11 @@ def init_mlflow(logger: MLFlowLogger) -> None:
 
     # Start run
     if logger._enabled:
-        logger_start_mlflow_run(None)
+        logger._start_mlflow_run(None)
 
     # If rank zero only, broadcast the MLFlow experiment and run IDs to other ranks, so the MLFlow run info is
     # available to other ranks during runtime.
     if logger._rank_zero_only:
-        mlflow_ids_list = [self._experiment_id, self._run_id]
+        mlflow_ids_list = [logger._experiment_id, logger._run_id]
         dist.broadcast_object_list(mlflow_ids_list, src=0)
         logger._experiment_id, logger._run_id = mlflow_ids_list
