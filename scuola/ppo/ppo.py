@@ -535,7 +535,7 @@ def main(cfg: DictConfig):
                 iteration=iteration,
                 is_eval=True,
             )
-            mosaicml_logger.log({"eval/episodes": eval_episode_table, "iteration": iteration})
+            mosaicml_logger.log_metrics({"eval/episodes": eval_episode_table, "iteration": iteration})
 
         # Sample training batch
         num_samples = ppo_config.get("episodes_per_iteration") // ppo_config.get("generations_per_sample")
@@ -681,7 +681,7 @@ def main(cfg: DictConfig):
         if eval_stats is not None:
             logs.update({f"eval/{k}": np.mean(v) for k, v in eval_stats.items()})
 
-        mosaicml_logger.log(logs)
+        mosaicml_logger.log_metrics(logs)
 
         selected_keys = [
             "train/kl_penalty",
