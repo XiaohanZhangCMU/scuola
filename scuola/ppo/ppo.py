@@ -473,6 +473,10 @@ def main(cfg: DictConfig):
     optimizer_name: str = cfg.optimizer.pop('name')
     optimizer = build_optimizer(policy_model, optimizer_name, cfg.optimizer)
 
+    print('I am here before vLLM')
+    dist.barrier()
+    time.sleep(10)
+
     # Initialize vLLM for inference
     inference_engine = LLM(
         model=model_config.get('pretrained_model_name_or_path', ''),
