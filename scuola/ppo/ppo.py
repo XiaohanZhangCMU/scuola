@@ -623,6 +623,7 @@ def main(cfg: DictConfig):
             batch = {k: v[i : i + per_device_batch_size] for k, v in model_inputs.items()}
 
             # Compute policy gradient loss
+            print(f"I am here: {i=}")
             loss, loss_metrics = compute_pg_loss(
                 policy_model=policy_model,
                 reference_model=reference_model,
@@ -652,6 +653,8 @@ def main(cfg: DictConfig):
             if i % accumulation_step == 0:
                 optimizer.step()
                 optimizer.zero_grad()
+
+            if i + per_device_batch_size >= ppo_config.get("episodes_per_iteration"):
                 reference_model.to('cpu')
 
             # Free memory
