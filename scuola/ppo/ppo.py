@@ -498,6 +498,10 @@ def main(cfg: DictConfig):
         seed=19,
     )
 
+    print('I am here after vLLM')
+    dist.barrier()
+    time.sleep(10)
+
     # Resume from checkpoint if specified
     begin_iter = 0
     if cfg.load_path is not None:
@@ -514,6 +518,8 @@ def main(cfg: DictConfig):
     # Main training loop
     for iteration in trange(begin_iter, ppo_config.get("num_iterations")):
         log.info(f"Iteration {iteration}/{ppo_config.get('num_iterations')}")
+
+        print(f'I am here {iteration=}')
 
         metrics = {}
 
@@ -573,7 +579,10 @@ def main(cfg: DictConfig):
         log.info(f"Generated {len(all_generations)} responses")
         gc.collect()
         torch.cuda.empty_cache()
-        time.sleep(1)
+
+        print(f"I am here 2: {num_samples=}")
+        dist.barrier()
+        time.sleep(10)
 
         log.info(f"Time taken to generate {len(all_generations)} responses: {time.time() - gen_time} seconds")
 
