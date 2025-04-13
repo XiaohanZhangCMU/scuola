@@ -486,7 +486,7 @@ def main(cfg: DictConfig):
         distributed_executor_backend="external_launcher",
         dtype=torch.bfloat16,
         enforce_eager=True,
-        gpu_memory_utilization=0.95,
+        gpu_memory_utilization=0.4,
         disable_custom_all_reduce=True,
         skip_tokenizer_init=False,
         max_model_len=2048,
