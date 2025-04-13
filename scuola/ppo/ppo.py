@@ -98,7 +98,7 @@ def preprocess_example(
     return {"prompt": prompt, "input_ids": input_ids, "nums": numbers, "target": target}
 
 def data_prep(tokenizer, llm_dataset):
-    dataset = load_dataset(llm_dataset, split="train", streaming=True)
+    dataset = load_dataset(llm_dataset, split="train")
     dataset = dataset.map(
         preprocess_example,
         num_proc=6,
@@ -107,7 +107,6 @@ def data_prep(tokenizer, llm_dataset):
             "SYSTEM_MESSAGE": SYSTEM_MESSAGE,
             "PROMPT_TEMPLATE": PROMPT_TEMPLATE,
         },
-        batched=False,
     )
     dataset = dataset.take(2000)  # Adjust the number as needed
 
