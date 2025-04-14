@@ -668,8 +668,8 @@ def main(cfg: DictConfig):
                 optimizer.step()
                 optimizer.zero_grad()
 
-            if i + per_device_batch_size >= ppo_config.get("episodes_per_iteration"):
-                reference_model.to('cpu')
+            #if i + per_device_batch_size >= ppo_config.get("episodes_per_iteration"):
+            #    reference_model.to('cpu')
 
             # Free memory
             del loss, loss_metrics
