@@ -1,8 +1,10 @@
 max_seq_len: 1024 
 model:
   name: hf_causal_lm
+  init_device: mixed
   pretrained: true
   pretrained_model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
+  use_flash_attention_2: true
 
 # load_path: oci://mosaicml-internal-integration-testing/elastic_resumption_1_to_2_node/ep0-ba10
 
