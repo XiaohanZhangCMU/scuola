@@ -621,7 +621,7 @@ def main(cfg: DictConfig):
 
         # Calculate losses and update model
         policy_model.train()
-        reference_model.to(device._device)
+        #reference_model.to(device._device)
         reference_model.eval()
 
         total_response_len = (model_inputs["labels"] != -100).sum().item()
