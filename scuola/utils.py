@@ -170,9 +170,6 @@ def compute_token_log_probs(
     log_probs = log_probs.squeeze(2)  # Shape: [batch_size, seq_len-1]
     log_probs = log_probs * label_mask  # Shape: [batch_size, seq_len-1]
 
-    del outputs
-    torch.cuda.empty_cache()
-
     return log_probs
 
 
