@@ -496,7 +496,6 @@ def main(cfg: DictConfig):
                     precision,
                     device,
                     auto_microbatching=False,
-                    seed=17,
                 )
 
     _, reference_model = prepare_fsdp_module(
@@ -506,7 +505,6 @@ def main(cfg: DictConfig):
                     precision,
                     device,
                     auto_microbatching=False,
-                    seed=17,
                 )
 
     print('I am here before vLLM')
