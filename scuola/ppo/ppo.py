@@ -499,7 +499,7 @@ def main(cfg: DictConfig):
                 )
 
     _, reference_model = prepare_fsdp_module(
-                    policy_model,
+                    reference_model,
                     optimizer,
                     FSDPConfig(**fsdp_config),
                     precision,
