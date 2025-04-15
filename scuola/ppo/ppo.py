@@ -21,7 +21,7 @@ from tqdm import trange
 from vllm import LLM, SamplingParams
 
 from composer.checkpoint.load import load_checkpoint
-from composer.utils import dist, get_device
+from composer.utils import dist, get_device, FSDPConfig
 from composer.devices import Device, DeviceCPU, DeviceGPU
 from composer.loggers.mlflow_logger import MLFlowLogger
 from composer.distributed import prepare_fsdp_module
