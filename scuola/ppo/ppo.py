@@ -500,7 +500,6 @@ def main(cfg: DictConfig):
 
     _, reference_model = prepare_fsdp_module(
                     reference_model,
-                    optimizer,
                     FSDPConfig(**fsdp_config),
                     precision,
                     device,
