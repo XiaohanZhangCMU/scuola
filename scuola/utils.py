@@ -304,7 +304,7 @@ def dump_episodes(
 
 
 
-def load_model_into_vllm(model: ComposerModel, llm: LLM) -> None:
+def load_model_into_vllm(model: FSDP, llm: LLM) -> None:
     """
     Load weights from a ComposerModel into a vLLM inference engine.
 
@@ -319,12 +319,23 @@ def load_model_into_vllm(model: ComposerModel, llm: LLM) -> None:
     Returns:
         None
     """
-    state_dict = model.module.state_dict() if isinstance(model, ComposerModel) else model.state_dict()
-    FSDP.set_state_dict_type(module,
+    FSDP.set_state_dict_type(model,
                              state_dict_type=StateDictType.FULL_STATE_DICT,
                              state_dict_config=FullStateDictConfig())
-    llm.llm_engine.model_executor.driver_worker.model_runner.model.load_weights(state_dict.items())
 
+    torch.cuda.empty_cache()
+    llm.wake_up()
+
+    world_size = dist.get_world_size()
+
+    vllm_model = llm.llm_engine.model_executor.driver_worker.model_runner.model
+    parameters = model.state_dict()
+
+    # Just pass the generator directly - remove the .items() call
+    params = ((name, param.full_tensor() if world_size != 1 else param) for name, param in parameters.items())
+    loaded_params = vllm_model.load_weights(params)
+
+    print(f"vLLM load weights, loaded_params: {len(loaded_params)}")
 
 
 def init_mlflow(logger: MLFlowLogger) -> None:

@@ -22,7 +22,11 @@ from vllm import LLM, SamplingParams
 
 from composer.checkpoint.load import load_checkpoint
 from composer.utils import dist, get_device
+from composer.devices import Device, DeviceCPU, DeviceGPU
 from composer.loggers.mlflow_logger import MLFlowLogger
+from composer.distributed import prepare_fsdp_module
+from composer.core import Precision
+from composer.core.precision import _validate_precision
 
 from llmfoundry.utils.builders import (
     build_tokenizer,
@@ -451,6 +455,13 @@ def main(cfg: DictConfig):
         cfg=model_config
     )
 
+    precision= cfg.precision
+    if precision is None:
+        precision = Precision.AMP_FP16 if isinstance(device, DeviceGPU) else Precision.FP32
+    elif isinstance(precision, str):
+        precision = Precision(precision)
+    _validate_precision(precision, device)
+
     # Build reference model (frozen copy of policy model)
     reference_model = build_composer_model(
         name=model_name,
@@ -476,6 +487,27 @@ def main(cfg: DictConfig):
     # Optimizer
     optimizer_name: str = cfg.optimizer.pop('name')
     optimizer = build_optimizer(policy_model, optimizer_name, cfg.optimizer)
+
+    # FSDP Wrap
+    _, policy_model = prepare_fsdp_module(
+                    policy_model,
+                    optimizers,
+                    fsdp_config,
+                    precision,
+                    device,
+                    auto_microbatching=False,
+                    seed=17,
+                )
+
+    _, reference_model = prepare_fsdp_module(
+                    policy_model,
+                    optimizers,
+                    fsdp_config,
+                    precision,
+                    device,
+                    auto_microbatching=False,
+                    seed=17,
+                )
 
     print('I am here before vLLM')
     dist.barrier()
@@ -640,7 +672,7 @@ def main(cfg: DictConfig):
             batch = {k: v[i : i + per_device_batch_size] for k, v in model_inputs.items()}
 
             # Compute policy gradient loss
-            print(f"I am here: {i=}")
+            print(f"I am here: {i=}\n\n")
             loss, loss_metrics = compute_pg_loss(
                 policy_model=policy_model,
                 reference_model=reference_model,
