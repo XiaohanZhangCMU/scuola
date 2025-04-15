@@ -15,6 +15,8 @@ from omegaconf import DictConfig
 
 import numpy as np
 import torch
+from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
+from torch.distributed.fsdp.api import ShardingStrategy, ShardedStateDictConfig, StateDictType, FullStateDictConfig
 import mlflow
 from datasets import load_dataset
 from tqdm import trange
@@ -484,29 +486,19 @@ def main(cfg: DictConfig):
     log.info(f"Train dataset size: {len(train_dataset)}")
     log.info(f"Test dataset size: {len(test_dataset)}")
 
+    # FSDP Wrap
+    policy_module = FSDP(policy_model, device_mesh=)
+    reference_module = FSDP(reference_model, device_mesh=)
+
+    FSDP.set_state_dict_type(policy_model,
+                             state_dict_type=StateDictType.FULL_STATE_DICT,
+                             state_dict_config=FullStateDictConfig())
+
+
     # Optimizer
     optimizer_name: str = cfg.optimizer.pop('name')
-    optimizer = build_optimizer(policy_model, optimizer_name, cfg.optimizer)
-    reference_optimizer = build_optimizer(reference_model, optimizer_name, cfg.optimizer)
-
-    # FSDP Wrap
-    _, policy_model = prepare_fsdp_module(
-                    policy_model,
-                    optimizer,
-                    FSDPConfig(**fsdp_config),
-                    precision,
-                    device,
-                    auto_microbatching=False,
-                )
-
-    _, reference_model = prepare_fsdp_module(
-                    reference_model,
-                    reference_optimizer,
-                    FSDPConfig(**fsdp_config),
-                    precision,
-                    device,
-                    auto_microbatching=False,
-                )
+    optimizer = build_optimizer(policy_module, optimizer_name, cfg.optimizer)
+    reference_optimizer = build_optimizer(reference_module, optimizer_name, cfg.optimizer)
 
     print('I am here before vLLM')
     dist.barrier()
@@ -547,7 +539,7 @@ def main(cfg: DictConfig):
             begin_iter = int(ckpt_name.split("ckpt_")[1].split(".pt")[0])
 
         # Load weights into vLLM
-        load_model_into_vllm(policy_model, inference_engine)
+        load_model_into_vllm(policy_module, inference_engine)
 
     # Main training loop
     for iteration in trange(begin_iter, ppo_config.get("num_iterations")):
@@ -654,9 +646,8 @@ def main(cfg: DictConfig):
         )
 
         # Calculate losses and update model
-        policy_model.train()
-        #reference_model.to(device._device)
-        reference_model.eval()
+        policy_module.train()
+        reference_module.eval()
 
         total_response_len = (model_inputs["labels"] != -100).sum().item()
 
@@ -719,7 +710,7 @@ def main(cfg: DictConfig):
         time.sleep(1)
 
         inference_engine.wake_up()
-        load_model_into_vllm(policy_model, inference_engine)
+        load_model_into_vllm(policy_module, inference_engine)
 
         #########################################################
         # Log metrics

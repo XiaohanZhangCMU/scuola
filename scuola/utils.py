@@ -5,7 +5,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from datasets import Dataset
 import torch
-from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
 from transformers import AutoTokenizer, PreTrainedModel
 from composer import ComposerModel
 from composer.loggers.mlflow_logger import MLFlowLogger
@@ -319,12 +318,7 @@ def load_model_into_vllm(model: FSDP, llm: LLM) -> None:
     Returns:
         None
     """
-    FSDP.set_state_dict_type(model,
-                             state_dict_type=StateDictType.FULL_STATE_DICT,
-                             state_dict_config=FullStateDictConfig())
-
     torch.cuda.empty_cache()
-    llm.wake_up()
 
     world_size = dist.get_world_size()
 
