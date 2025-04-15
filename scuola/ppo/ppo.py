@@ -487,6 +487,7 @@ def main(cfg: DictConfig):
     # Optimizer
     optimizer_name: str = cfg.optimizer.pop('name')
     optimizer = build_optimizer(policy_model, optimizer_name, cfg.optimizer)
+    reference_optimizer = build_optimizer(reference_model, 'reference_optimizer', cfg.optimizer)
 
     # FSDP Wrap
     _, policy_model = prepare_fsdp_module(
@@ -500,6 +501,7 @@ def main(cfg: DictConfig):
 
     _, reference_model = prepare_fsdp_module(
                     reference_model,
+                    reference_optimizer,
                     FSDPConfig(**fsdp_config),
                     precision,
                     device,
