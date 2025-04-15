@@ -491,7 +491,7 @@ def main(cfg: DictConfig):
     # FSDP Wrap
     _, policy_model = prepare_fsdp_module(
                     policy_model,
-                    optimizers,
+                    optimizer,
                     fsdp_config,
                     precision,
                     device,
@@ -501,7 +501,7 @@ def main(cfg: DictConfig):
 
     _, reference_model = prepare_fsdp_module(
                     policy_model,
-                    optimizers,
+                    optimizer,
                     fsdp_config,
                     precision,
                     device,
