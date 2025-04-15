@@ -21,7 +21,7 @@ from tqdm import trange
 from vllm import LLM, SamplingParams
 
 from composer.checkpoint.load import load_checkpoint
-from composer.utils import dist, get_device
+from composer.utils import dist, get_device, create_fsdp_config
 from composer.devices import Device, DeviceCPU, DeviceGPU
 from composer.loggers.mlflow_logger import MLFlowLogger
 from composer.distributed import prepare_fsdp_module
@@ -492,7 +492,7 @@ def main(cfg: DictConfig):
     _, policy_model = prepare_fsdp_module(
                     policy_model,
                     optimizer,
-                    fsdp_config,
+                    create_fsdp_config(fsdp_config),
                     precision,
                     device,
                     auto_microbatching=False,
@@ -501,7 +501,7 @@ def main(cfg: DictConfig):
     _, reference_model = prepare_fsdp_module(
                     policy_model,
                     optimizer,
-                    fsdp_config,
+                    create_fsdp_config(fsdp_config),
                     precision,
                     device,
                     auto_microbatching=False,
