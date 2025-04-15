@@ -501,7 +501,7 @@ def main(cfg: DictConfig):
     _, reference_model = prepare_fsdp_module(
                     policy_model,
                     optimizer,
-                    FSDPConfig(**fsdp_config)
+                    FSDPConfig(**fsdp_config),
                     precision,
                     device,
                     auto_microbatching=False,
