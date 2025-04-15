@@ -103,7 +103,7 @@ def prepare_model_inputs(
 
     # Convert to tensors
     return {
-        k: torch.tensor(v, dtype=torch.long if k != "advantages" else torch.float, device=device)
+        k: torch.tensor(v, dtype=torch.long if k != "advantages" else torch.bfloat16, device=device)
         for k, v in inputs.items()
     }
 
