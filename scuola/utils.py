@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from datasets import Dataset
 import torch
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from transformers import AutoTokenizer, PreTrainedModel
 from composer import ComposerModel
 from composer.loggers.mlflow_logger import MLFlowLogger
