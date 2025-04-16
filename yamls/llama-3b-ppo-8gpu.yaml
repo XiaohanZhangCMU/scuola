@@ -36,7 +36,6 @@ fsdp_config:
   param_persistence: SELECTIVE
 
 tp_config:
-  enabled: true
   strategy: "tensor_parallel"
   tensor_parallel_degree: 8
 
