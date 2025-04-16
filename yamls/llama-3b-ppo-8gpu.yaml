@@ -36,7 +36,7 @@ fsdp_config:
   param_persistence: SELECTIVE
 
 tp_config:
-  strategy: "tensor_parallel"
+  strategy: "ffn"
   tensor_parallel_degree: 8
 
 vllm_config:
