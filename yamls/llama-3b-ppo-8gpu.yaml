@@ -77,7 +77,6 @@ train_loader:
   persistent_workers: true
   timeout: 0
 
-eval_interval: 25
 eval_first: true
 global_train_batch_size: 48  # somewhere in the 6-8 * numgpus range seems good
 
@@ -107,6 +106,7 @@ ppo:
   generations_per_sample: 4
   episodes_per_iteration: 64 # Number of episodes to collect per iteration for training
   num_iterations: 1000
+  eval_interval: 25
 
 
 
