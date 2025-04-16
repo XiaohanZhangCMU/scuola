@@ -398,7 +398,7 @@ def build_optimizer(model: nn.Module, optimizer_cfg: OptimizerConfig):
     """
     Simple AdamW optimizer for the policy model.
     """
-    optimizer = optim.AdamW(model.parameters(), lr=optimizer_cfg.learning_rate)
+    optimizer = optim.AdamW(model.parameters(), lr=optimizer_cfg.lr)
     return optimizer
 
 
