@@ -488,7 +488,9 @@ def main():
 
     begin_iter = 0
 
-    # Main training loop
+    # Main training loop of PPO
+    cfg = cfg.ppo
+
     for iteration in trange(begin_iter, cfg.num_iterations, disable=(rank != 0)):
         # Evaluate every N steps
         if iteration % cfg.eval_interval == 0 and rank == 0:
@@ -517,7 +519,7 @@ def main():
         # Sample training batch
         #   episodes_per_iteration => how many new episodes we gather each iteration
         #   generations_per_sample => how many completions per input
-        num_samples = cfg.ppo.episodes_per_iteration // cfg.ppo.generations_per_sample
+        num_samples = cfg.episodes_per_iteration // cfg.generations_per_sample
         indices = np.random.choice(len(train_dataset), size=num_samples, replace=False)
         samples = [train_dataset[i] for i in indices]
 
@@ -528,11 +530,11 @@ def main():
         outputs = inference_engine.generate(
             prompt_token_ids=[s["input_ids"] for s in samples],
             sampling_params=SamplingParams(
-                n=cfg.ppo.generations_per_sample,
-                temperature=cfg.ppo.temperature,
-                top_p=cfg.ppo.top_p,
-                top_k=cfg.ppo.top_k if cfg.ppo.top_k > 0 else None,
-                max_tokens=cfg.ppo.max_response_tokens,
+                n=cfg.generations_per_sample,
+                temperature=cfg.temperature,
+                top_p=cfg.top_p,
+                top_k=cfg.top_k if cfg.top_k > 0 else None,
+                max_tokens=cfg.max_response_tokens,
                 detokenize=False,
                 stop_token_ids=[eos_token_id],
             ),
@@ -557,7 +559,7 @@ def main():
             tokenizer,
             eos_token_id,
             eos_token,
-            cfg.ppo.generations_per_sample,
+            cfg.generations_per_sample,
         )
 
         # Dump a couple examples on rank0
@@ -581,7 +583,7 @@ def main():
 
         # Accumulate gradient
         metrics = {}
-        for i in trange(0, cfg.ppo.episodes_per_iteration, per_device_batch_size, disable=(rank != 0)):
+        for i in trange(0, cfg.episodes_per_iteration, per_device_batch_size, disable=(rank != 0)):
             batch = {
                 k: v[i : i + per_device_batch_size] for k, v in model_inputs.items()
             }
@@ -591,8 +593,8 @@ def main():
                 reference_model=fsdp_reference,
                 batch=batch,
                 total_response_len=total_response_len,
-                temperature=cfg.ppo.temperature,
-                kl_coefficient=cfg.ppo.kl_coeff,
+                temperature=cfg.temperature,
+                kl_coefficient=cfg.kl_coeff,
             )
 
             # Track metrics in a local list

@@ -121,6 +121,7 @@ class PPOConfig:
     generations_per_sample: int = 4
     episodes_per_iteration: int = 64
     num_iterations: int = 1000
+    eval_interval: int = 25
 
 @dataclass
 class Config:
@@ -138,7 +139,6 @@ class Config:
 
     # Top level configs
     max_seq_len: int = MAX_SEQ_LEN
-    eval_interval: int = 25
     eval_first: bool = True
     global_train_batch_size: int = 32
     seed: int = 17
