@@ -23,7 +23,7 @@ from tqdm import trange
 from vllm import LLM, SamplingParams
 
 from composer.checkpoint.load import load_checkpoint
-from composer.utils import dist, get_device, FSDPConfig
+from composer.utils import dist, get_device, FSDPConfig, TPConfig
 from composer.devices import Device, DeviceCPU, DeviceGPU
 from composer.loggers.mlflow_logger import MLFlowLogger
 from composer.distributed import prepare_fsdp_module
@@ -474,8 +474,8 @@ def main(cfg: DictConfig):
     )
     reference_model.eval()
 
-    #policy_model = device.module_to_device(policy_model)
-    #reference_model = device.module_to_device(reference_model)
+    policy_model = device.module_to_device(policy_model)
+    reference_model = device.module_to_device(reference_model)
 
     # Get tokenizer components
     EOS_TOKEN_ID = tokenizer.eos_token_id
@@ -487,13 +487,16 @@ def main(cfg: DictConfig):
     log.info(f"Test dataset size: {len(test_dataset)}")
 
     # FSDP Wrap
-    policy_module = FSDP(policy_model, device_mesh=)
-    reference_module = FSDP(reference_model, device_mesh=)
+    fsdp_config = FSDPConfig(**fsdp_config)
+    tp_config = TPConfig(**tp_config)
+
+    device_mesh = _create_device_mesh(device, fsdp_config, tp_config)
+    policy_module = FSDP(policy_model, device_mesh=device_mesh)
+    reference_module = FSDP(reference_model, device_mesh=device_mesh)
 
     FSDP.set_state_dict_type(policy_model,
                              state_dict_type=StateDictType.FULL_STATE_DICT,
                              state_dict_config=FullStateDictConfig())
-
 
     # Optimizer
     optimizer_name: str = cfg.optimizer.pop('name')
