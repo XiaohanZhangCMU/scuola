@@ -40,7 +40,7 @@ from transformers import (
 # --------------
 #  Our utilities
 # --------------
-from utils import (
+from scuola.utils import (
     prepare_model_inputs,
     compute_token_log_probs,
     evaluate_on_test_set,
