@@ -13,19 +13,13 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.distributed as dist
 from torch.distributed.fsdp import (
-    FullyShardedDataParallel as FSDP,
-    ShardingStrategy,
-    StateDictType,
-    FullStateDictConfig,
+    FullyShardedDataParallel as FSDP, ShardingStrategy,
+    StateDictType, FullStateDictConfig,
 )
 import numpy as np
 from tqdm import trange
 import mlflow
 
-# For config
-from omegaconf import OmegaConf
-
-# For data
 from datasets import load_dataset
 
 # For inference
@@ -41,14 +35,14 @@ from transformers import (
 #  Our utilities
 # --------------
 from scuola.utils import (
-    prepare_model_inputs,
-    compute_token_log_probs,
-    evaluate_on_test_set,
-    dump_episodes,
-    load_model_into_vllm,
-    init_mlflow,
+    prepare_model_inputs, compute_token_log_probs, evaluate_on_test_set,
+    dump_episodes, load_model_into_vllm, init_mlflow,
 )
-from scuola.config import Config, load_and_validate_config
+from scuola.config import (
+    ModelConfig, TokenizerConfig, FsdpConfig, VllmConfig, SchedulerConfig,
+    OptimizerConfig, DatasetConfig, TrainLoaderConfig, MlflowConfig,
+    LoggersConfig, PPOConfig, Config, load_and_validate_config
+)
 
 ###############################################################################
 # Logging
@@ -349,17 +343,18 @@ def init_distributed():
     return local_rank
 
 
-def build_model_and_tokenizer(cfg: Config):
+def build_model_and_tokenizer(tokenizer_cfg: TokenizerConfig,
+                              model_cfg: ModelConfig):
     """
     Build HF model and tokenizer in pure PyTorch, wrap with FSDP.
     """
     # Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(cfg.model_name_or_path, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_cfg.name, trust_remote_code=True)
     # For the custom "apply_chat_template" used above, either define your own or remove that pattern.
 
     # Model
     model = AutoModelForCausalLM.from_pretrained(
-        cfg.model_name_or_path,
+        model_cfg.pretrained_model_name_or_path,
         trust_remote_code=True,
     )
     # Freeze the reference model by copy
@@ -370,7 +365,7 @@ def build_model_and_tokenizer(cfg: Config):
     return model, reference_model, tokenizer
 
 
-def wrap_fsdp(model: nn.Module, cfg: Config):
+def wrap_fsdp(model: nn.Module, fsdp_cfg: FsdpConfig):
     """
     Wrap model with PyTorch FSDP.
     """
@@ -381,7 +376,7 @@ def wrap_fsdp(model: nn.Module, cfg: Config):
         "NO_SHARD": ShardingStrategy.NO_SHARD,
         "HYBRID_SHARD": ShardingStrategy.HYBRID_SHARD,
     }
-    sharding = strategy_map.get(cfg.sharding_strategy.upper(), ShardingStrategy.FULL_SHARD)
+    sharding = strategy_map.get(fsdp_cfg.sharding_strategy.upper(), ShardingStrategy.FULL_SHARD)
 
     fsdp_model = FSDP(
         model,
@@ -399,11 +394,11 @@ def wrap_fsdp(model: nn.Module, cfg: Config):
     return fsdp_model
 
 
-def build_optimizer(model: nn.Module, cfg: Config):
+def build_optimizer(model: nn.Module, optimizer_cfg: OptimizerConfig):
     """
     Simple AdamW optimizer for the policy model.
     """
-    optimizer = optim.AdamW(model.parameters(), lr=cfg.learning_rate)
+    optimizer = optim.AdamW(model.parameters(), lr=optimizer_cfg.learning_rate)
     return optimizer
 
 
@@ -437,23 +432,23 @@ def main():
     np.random.seed(cfg.seed + rank)
 
     # Build model & tokenizer
-    policy_model, reference_model, tokenizer = build_model_and_tokenizer(cfg)
+    policy_model, reference_model, tokenizer = build_model_and_tokenizer(cfg.tokenizer, cfg.model)
 
     if cfg.mixed_precision:
         policy_model = policy_model.half()
         reference_model = reference_model.half()
 
     # Wrap them in FSDP
-    fsdp_policy = wrap_fsdp(policy_model, cfg)
-    fsdp_reference = wrap_fsdp(reference_model, cfg)
+    fsdp_policy = wrap_fsdp(policy_model, cfg.fsdp)
+    fsdp_reference = wrap_fsdp(reference_model, cfg.fsdp)
 
     fsdp_reference.eval()
 
     # Build optimizer
-    optimizer = build_optimizer(fsdp_policy, cfg)
+    optimizer = build_optimizer(fsdp_policy, cfg.optimizer)
 
     # Load dataset
-    train_dataset, test_dataset = data_prep(tokenizer, cfg.dataset_name)
+    train_dataset, test_dataset = data_prep(tokenizer, cfg.train_loader.dataset)
 
     # Figure out microbatching
     per_device_batch_size = cfg.global_train_batch_size // world_size
@@ -462,11 +457,11 @@ def main():
     # Set up vLLM for inference
     # (If you want multi-GPU inference, set `tensor_parallel_size=cfg.inference_tp_size` etc.)
     inference_engine = LLM(
-        model=cfg.model_name_or_path,
+        model=cfg.model.pretrained_model_name_or_path,
         trust_remote_code=True,
         enforce_eager=True,
         dtype=torch.bfloat16,
-        tensor_parallel_size=cfg.inference_tp_size,
+        tensor_parallel_size=cfg.vllm.inference_tp_size,
         distributed_executor_backend="external_launcher",
         gpu_memory_utilization=0.4,
         max_model_len=2048,
@@ -522,7 +517,7 @@ def main():
         # Sample training batch
         #   episodes_per_iteration => how many new episodes we gather each iteration
         #   generations_per_sample => how many completions per input
-        num_samples = cfg.episodes_per_iteration // cfg.generations_per_sample
+        num_samples = cfg.ppo.episodes_per_iteration // cfg.ppo.generations_per_sample
         indices = np.random.choice(len(train_dataset), size=num_samples, replace=False)
         samples = [train_dataset[i] for i in indices]
 
@@ -533,11 +528,11 @@ def main():
         outputs = inference_engine.generate(
             prompt_token_ids=[s["input_ids"] for s in samples],
             sampling_params=SamplingParams(
-                n=cfg.generations_per_sample,
-                temperature=cfg.temperature,
-                top_p=cfg.top_p,
-                top_k=cfg.top_k if cfg.top_k > 0 else None,
-                max_tokens=cfg.max_response_tokens,
+                n=cfg.ppo.generations_per_sample,
+                temperature=cfg.ppo.temperature,
+                top_p=cfg.ppo.top_p,
+                top_k=cfg.ppo.top_k if cfg.ppo.top_k > 0 else None,
+                max_tokens=cfg.ppo.max_response_tokens,
                 detokenize=False,
                 stop_token_ids=[eos_token_id],
             ),
@@ -562,7 +557,7 @@ def main():
             tokenizer,
             eos_token_id,
             eos_token,
-            cfg.generations_per_sample,
+            cfg.ppo.generations_per_sample,
         )
 
         # Dump a couple examples on rank0
@@ -586,7 +581,7 @@ def main():
 
         # Accumulate gradient
         metrics = {}
-        for i in trange(0, cfg.episodes_per_iteration, per_device_batch_size, disable=(rank != 0)):
+        for i in trange(0, cfg.ppo.episodes_per_iteration, per_device_batch_size, disable=(rank != 0)):
             batch = {
                 k: v[i : i + per_device_batch_size] for k, v in model_inputs.items()
             }
@@ -596,8 +591,8 @@ def main():
                 reference_model=fsdp_reference,
                 batch=batch,
                 total_response_len=total_response_len,
-                temperature=cfg.temperature,
-                kl_coefficient=cfg.kl_coeff,
+                temperature=cfg.ppo.temperature,
+                kl_coefficient=cfg.ppo.kl_coeff,
             )
 
             # Track metrics in a local list

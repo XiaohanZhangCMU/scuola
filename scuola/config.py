@@ -127,14 +127,14 @@ class Config:
     # Nested configs
     model: ModelConfig
     tokenizer: TokenizerConfig
-    fsdp_config: FsdpConfig
-    tp_config: TpConfig
-    vllm_config: VllmConfig
+    fsdp: FsdpConfig
+    tp: TpConfig
+    vllm: VllmConfig
     scheduler: SchedulerConfig
     optimizer: OptimizerConfig
     train_loader: TrainLoaderConfig
     loggers: LoggersConfig
-    ppo_config: PPOConfig
+    ppo: PPOConfig
 
     # Top level configs
     max_seq_len: int = MAX_SEQ_LEN
