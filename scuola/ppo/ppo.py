@@ -522,7 +522,8 @@ def main():
         #   generations_per_sample => how many completions per input
         num_samples = cfg.episodes_per_iteration // cfg.generations_per_sample
         indices = np.random.choice(len(train_dataset), size=num_samples, replace=False)
-        samples = [train_dataset[i] for i in indices]
+        #samples = [train_dataset[i] for i in indices]
+        samples = train_dataset[indices]
 
         # Inference to get responses
         dist.barrier()
