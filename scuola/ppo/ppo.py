@@ -305,7 +305,7 @@ def preprocess_example(
 
 def data_prep(
     tokenizer: AutoTokenizer,
-    dataset_name: str,
+    cfg: DatasetConfig,
     num_train_samples: int = 2000,
     num_test: int = 500,
 ):
@@ -313,7 +313,7 @@ def data_prep(
     Example dataset from huggingface.
     Splits into train/test.
     """
-    dataset = load_dataset(dataset_name, split="train")
+    dataset = load_dataset(cfg.dataset_name, split="train")
     dataset = dataset.map(
         lambda ex: preprocess_example(ex, tokenizer=tokenizer),
         num_proc=4,
