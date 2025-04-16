@@ -356,6 +356,7 @@ def build_model_and_tokenizer(tokenizer_cfg: TokenizerConfig,
     model = AutoModelForCausalLM.from_pretrained(
         model_cfg.pretrained_model_name_or_path,
         trust_remote_code=True,
+        attn_implementation='flash_attention_2',
     )
     # Freeze the reference model by copy
     import copy
