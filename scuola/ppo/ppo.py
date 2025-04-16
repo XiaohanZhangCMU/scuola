@@ -48,6 +48,7 @@ from scuola.utils import (
     load_model_into_vllm,
     init_mlflow,
 )
+from scuola.config import Config, load_and_validate_config
 
 ###############################################################################
 # Logging
@@ -333,42 +334,6 @@ def data_prep(
 # Main
 ###############################################################################
 
-@dataclass
-class PPOConfig:
-    # Basic training parameters
-    global_train_batch_size: int = 32
-    device_train_microbatch_size: int = 8
-    num_iterations: int = 1000
-    episodes_per_iteration: int = 64
-    generations_per_sample: int = 4
-    max_response_tokens: int = 128
-
-    # FSDP
-    sharding_strategy: str = "FULL_SHARD"
-    mixed_precision: bool = True
-
-    # LR, etc
-    learning_rate: float = 5e-6
-
-    # PPO params
-    kl_coeff: float = 0.1
-    temperature: float = 0.7
-    top_p: float = 0.9
-    top_k: int = -1
-
-    # vLLM
-    inference_tp_size: int = 1
-
-    # Model
-    model_name_or_path: str = "Qwen/Qwen2.5-0.5B-Instruct"
-
-    # Data
-    dataset_name: str = "Jiayi-Pan/Countdown-Tasks-3to4"
-
-    # Logging
-    eval_interval: int = 25
-    seed: int = 17
-
 
 def init_distributed():
     """
@@ -451,14 +416,14 @@ def main():
     # Load config from YAML or use defaults
     if args.config_path:
         log.info(f"Loading config from {args.config_path}")
-        config = OmegaConf.load(args.config_path)
-        # Merge into PPOConfig
-        cfg = OmegaConf.to_object(config)
-        cfg = PPOConfig(**cfg)
+        try:
+            config = load_and_validate_config(args.config_path)
+        except Exception as e:
+            log.info(f"Error loading configuration: {e}")
     else:
         # Fallback
         log.info("No config path specified. Using default PPOConfig.")
-        cfg = PPOConfig()
+        cfg = Config()
 
     # Initialize distributed
     local_rank = init_distributed()
