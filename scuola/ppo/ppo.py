@@ -18,9 +18,6 @@ from torch.distributed.fsdp import (
     StateDictType,
     FullStateDictConfig,
 )
-from torch.distributed.fsdp._common_utils import _set_fsdp_runtime_logging
-from torch.nn.parallel import DistributedDataParallel as DDP
-
 import numpy as np
 from tqdm import trange
 import mlflow
