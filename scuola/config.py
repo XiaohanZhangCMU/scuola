@@ -147,6 +147,7 @@ class Config:
     precision: str = "amp_bf16"
     dist_timeout: int = 600
     progress_bar: bool = False
+    mixed_precision: bool = False
 
     def __repr__(self) -> str:
         """Convert to str via OmegaConf (resolves any remaining references)"""
