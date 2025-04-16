@@ -1,5 +1,6 @@
 import os
-from dataclasses import dataclass, field
+import json
+from dataclasses import dataclass, field, asdict
 from typing import Optional, Union, Any
 from omegaconf import OmegaConf, MISSING
 from omegaconf.errors import ConfigAttributeError, ValidationError
@@ -17,10 +18,10 @@ class ModelConfig:
 @dataclass
 class TokenizerConfig:
     name: str = "Qwen/Qwen2.5-0.5B-Instruct"
-    kwargs: dict[str, Any] = {
+    kwargs: dict = field(default_factory = lambda : {
             "model_max_length": MAX_SEQ_LEN,
             "trust_remote_code": True
-    }
+    })
 
 
 @dataclass
@@ -36,7 +37,7 @@ class FsdpConfig:
     forward_sync: bool = True
     use_orig_params: bool = False
     backward_sync: bool = True
-    ignored_modules: list[str] = []
+    ignored_modules: list[str] = field(default_factory = lambda: [])
     state_dict_type: str = "FULL_STATE_DICT"
     activation_checkpointing_reentrant: bool = False
     cpu_offload: bool = False
@@ -71,7 +72,7 @@ class SchedulerConfig:
 class OptimizerConfig:
     name: str = "decoupled_adamw"
     lr: float = 5.0e-6
-    betas: list[float] = [0.9, 0.999]
+    betas: list[float] = field(default_factory = lambda: [0.9, 0.999])
     eps: float = 1.0e-8
     weight_decay: float = 0
 
@@ -88,8 +89,8 @@ class DatasetConfig:
 
 @dataclass
 class TrainLoaderConfig:
-    name: str = "ppo"
     dataset: DatasetConfig
+    name: str = "ppo"
     drop_last: bool = True
     num_workers: int = 8
     pin_memory: bool = False
@@ -100,7 +101,7 @@ class TrainLoaderConfig:
 
 @dataclass
 class MlflowConfig:
-    tags: dict[str, str] = {"group": "test"}
+    tags: dict[str, str] = field(default_factory= lambda: {"group": "test"})
     experiment_name: str = "/Users/xiaohan.zhang@databricks.com/ppo_test"
 
 
@@ -108,7 +109,7 @@ class MlflowConfig:
 class LoggersConfig:
     mlflow: MlflowConfig
     log_to_console: bool = True
-
+    progress_bar: bool = False
 
 @dataclass
 class PPOConfig:
@@ -123,18 +124,6 @@ class PPOConfig:
 
 @dataclass
 class Config:
-    # Top level configs
-    max_seq_len: int = MAX_SEQ_LEN
-    eval_interval: str = 25
-    eval_first: bool = True
-    global_train_batch_size: int = 32
-    seed: int = 17
-    device_eval_batch_size: int = 8
-    device_train_microbatch_size: Union[int, str] = 8
-    precision: str = "amp_bf16"
-    dist_timeout: int = 600
-    progress_bar: bool = False
-
     # Nested configs
     model: ModelConfig
     tokenizer: TokenizerConfig
@@ -146,6 +135,22 @@ class Config:
     train_loader: TrainLoaderConfig
     loggers: LoggersConfig
     ppo_config: PPOConfig
+
+    # Top level configs
+    max_seq_len: int = MAX_SEQ_LEN
+    eval_interval: int = 25
+    eval_first: bool = True
+    global_train_batch_size: int = 32
+    seed: int = 17
+    device_eval_batch_size: int = 8
+    device_train_microbatch_size: Union[int, str] = 8
+    precision: str = "amp_bf16"
+    dist_timeout: int = 600
+    progress_bar: bool = False
+
+    def __repr__(self) -> str:
+        """Convert to str via OmegaConf (resolves any remaining references)"""
+        return json.dumps(OmegaConf.to_container(OmegaConf.create(asdict(self)), resolve=True), indent=2, default=str)
 
 
 def load_config(config_path: str) -> Config:

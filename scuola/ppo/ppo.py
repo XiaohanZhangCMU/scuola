@@ -349,7 +349,7 @@ def init_distributed():
     return local_rank
 
 
-def build_model_and_tokenizer(cfg: PPOConfig):
+def build_model_and_tokenizer(cfg: Config):
     """
     Build HF model and tokenizer in pure PyTorch, wrap with FSDP.
     """
@@ -370,7 +370,7 @@ def build_model_and_tokenizer(cfg: PPOConfig):
     return model, reference_model, tokenizer
 
 
-def wrap_fsdp(model: nn.Module, cfg: PPOConfig):
+def wrap_fsdp(model: nn.Module, cfg: Config):
     """
     Wrap model with PyTorch FSDP.
     """
@@ -399,7 +399,7 @@ def wrap_fsdp(model: nn.Module, cfg: PPOConfig):
     return fsdp_model
 
 
-def build_optimizer(model: nn.Module, cfg: PPOConfig):
+def build_optimizer(model: nn.Module, cfg: Config):
     """
     Simple AdamW optimizer for the policy model.
     """
@@ -417,13 +417,15 @@ def main():
     if args.config_path:
         log.info(f"Loading config from {args.config_path}")
         try:
-            config = load_and_validate_config(args.config_path)
+            cfg = load_and_validate_config(args.config_path)
         except Exception as e:
-            log.info(f"Error loading configuration: {e}")
+            raise ValueError(f"Error loading configuration: {args.config_path}") from e
     else:
         # Fallback
-        log.info("No config path specified. Using default PPOConfig.")
+        log.info("No config path specified. Using default Config.")
         cfg = Config()
+
+    log.info(f"read {cfg!r}")
 
     # Initialize distributed
     local_rank = init_distributed()

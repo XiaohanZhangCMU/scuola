@@ -77,8 +77,7 @@ train_loader:
   persistent_workers: true
   timeout: 0
 
-max_duration: 2ep  # 2-3 epochs seems like the sweet spot
-eval_interval: 1ep
+eval_interval: 25
 eval_first: true
 global_train_batch_size: 48  # somewhere in the 6-8 * numgpus range seems good
 
@@ -90,16 +89,14 @@ device_train_microbatch_size: 8
 precision: amp_bf16
 dist_timeout: 600
 
+# Logging
 loggers:
   mlflow:
     tags:
       group: test
     experiment_name: /Users/xiaohan.zhang@databricks.com/ppo_test
-
-# Logging
-progress_bar: false
-log_to_console: true
-console_log_interval: 1ba
+  progress_bar: false
+  log_to_console: true
 
 ppo_config:
   kl_coeff: 0.1  # Controls how much the policy can deviate from the reference model
