@@ -4,33 +4,7 @@ from typing import Optional, Union, Any
 from omegaconf import OmegaConf, MISSING
 from omegaconf.errors import ConfigAttributeError, ValidationError
 
-
-
-@dataclass
-class Config:
-    # Top level configs
-    max_seq_len: int = 1024
-    eval_interval: str = 25
-    eval_first: bool = True
-    global_train_batch_size: int = 32
-    seed: int = 17
-    device_eval_batch_size: int = 8
-    device_train_microbatch_size: Union[int, str] = 8
-    precision: str = "amp_bf16"
-    dist_timeout: int = 600
-    progress_bar: bool = False
-
-    # Nested configs
-    model: ModelConfig
-    tokenizer: TokenizerConfig
-    fsdp_config: FsdpConfig
-    tp_config: TpConfig
-    vllm_config: VllmConfig
-    scheduler: SchedulerConfig
-    optimizer: OptimizerConfig
-    train_loader: TrainLoaderConfig
-    loggers: LoggersConfig
-    ppo_config: PPOConfig
+MAX_SEQ_LEN = 1024
 
 @dataclass
 class ModelConfig:
@@ -44,7 +18,7 @@ class ModelConfig:
 class TokenizerConfig:
     name: str = "Qwen/Qwen2.5-0.5B-Instruct"
     kwargs: dict[str, Any] = {
-            "model_max_length": Config.max_seq_len,
+            "model_max_length": MAX_SEQ_LEN,
             "trust_remote_code": True
     }
 
@@ -106,7 +80,7 @@ class OptimizerConfig:
 class DatasetConfig:
     split: str = "train"
     dataset_name: str = "Jiayi-Pan/Countdown-Tasks-3to4"
-    max_seq_len: int = Config.max_seq_len
+    max_seq_len: int = MAX_SEQ_LEN
     allow_pad_trimming: bool = False
     decoder_only_format: bool = True
     shuffle: bool = True
@@ -146,6 +120,32 @@ class PPOConfig:
     generations_per_sample: int = 4
     episodes_per_iteration: int = 64
     num_iterations: int = 1000
+
+@dataclass
+class Config:
+    # Top level configs
+    max_seq_len: int = MAX_SEQ_LEN
+    eval_interval: str = 25
+    eval_first: bool = True
+    global_train_batch_size: int = 32
+    seed: int = 17
+    device_eval_batch_size: int = 8
+    device_train_microbatch_size: Union[int, str] = 8
+    precision: str = "amp_bf16"
+    dist_timeout: int = 600
+    progress_bar: bool = False
+
+    # Nested configs
+    model: ModelConfig
+    tokenizer: TokenizerConfig
+    fsdp_config: FsdpConfig
+    tp_config: TpConfig
+    vllm_config: VllmConfig
+    scheduler: SchedulerConfig
+    optimizer: OptimizerConfig
+    train_loader: TrainLoaderConfig
+    loggers: LoggersConfig
+    ppo_config: PPOConfig
 
 
 def load_config(config_path: str) -> Config:
