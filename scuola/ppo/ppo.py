@@ -475,8 +475,8 @@ def main(cfg: DictConfig):
     )
     reference_model.eval()
 
-    policy_model = device.module_to_device(policy_model)
-    reference_model = device.module_to_device(reference_model)
+    #policy_model = device.module_to_device(policy_model)
+    #reference_model = device.module_to_device(reference_model)
 
     # Get tokenizer components
     EOS_TOKEN_ID = tokenizer.eos_token_id
