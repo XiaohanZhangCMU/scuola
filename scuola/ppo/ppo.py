@@ -487,13 +487,14 @@ def main(cfg: DictConfig):
     log.info(f"Train dataset size: {len(train_dataset)}")
     log.info(f"Test dataset size: {len(test_dataset)}")
 
-    # FSDP Wrap
-    fsdp_config = FSDPConfig(**fsdp_config)
 
+    # Prepare tp_config
     strategy = tp_config.pop('strategy')
-    layer_plan = build_tp_strategies(strategy, model)
+    layer_plan = build_tp_strategies(strategy, policy_model)
     tp_config = TPConfig(**tp_config, layer_plan=layer_plan)
 
+    # FSDP Wrap
+    fsdp_config = FSDPConfig(**fsdp_config)
     device_mesh = _create_device_mesh(device, fsdp_config, tp_config)
 
     policy_module = FSDP(policy_model, device_mesh=device_mesh)
