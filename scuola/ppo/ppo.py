@@ -36,6 +36,7 @@ from llmfoundry.utils.builders import (
     build_logger,
     build_algorithm,
     build_composer_model,
+    build_tp_strategies,
 )
 from llmfoundry.utils.config_utils import (
     TrainConfig,
@@ -488,9 +489,13 @@ def main(cfg: DictConfig):
 
     # FSDP Wrap
     fsdp_config = FSDPConfig(**fsdp_config)
-    tp_config = TPConfig(**tp_config)
+
+    strategy = tp_config.pop('strategy')
+    layer_plan = build_tp_strategies(strategy, model)
+    tp_config = TPConfig(**tp_config, layer_plan=layer_plan)
 
     device_mesh = _create_device_mesh(device, fsdp_config, tp_config)
+
     policy_module = FSDP(policy_model, device_mesh=device_mesh)
     reference_module = FSDP(reference_model, device_mesh=device_mesh)
 
