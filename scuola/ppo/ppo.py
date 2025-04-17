@@ -231,6 +231,8 @@ def compute_pg_loss(
     labels = batch["labels"]
     advantages = batch["advantages"]
 
+    print(f"I am here 19: {advantages.dtype=}")
+
     model_inputs = {
         "input_ids": input_ids,
         "attention_mask": attention_mask,

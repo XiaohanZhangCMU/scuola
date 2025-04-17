@@ -58,6 +58,8 @@ def prepare_model_inputs(
     # BFloat16 or float16 or float?
     advantages_t = torch.tensor(advantages_list, dtype=torch.bfloat16, device=device)
 
+    print(f"I am here 20: {advantages_t.dtype=}")
+
     return {
         "input_ids": input_ids_t,
         "attention_mask": attention_mask_t,
