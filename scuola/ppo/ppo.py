@@ -641,7 +641,7 @@ def main():
             batch_count += 1
 
             # Step if we are at grad accumulation boundary
-            if (batch_count % accumulation_steps == 0 or end_idx >= train_steps:
+            if (batch_count % accumulation_steps == 0) or (end_idx >= train_steps):
                 optimizer.step()
                 optimizer.zero_grad()
 
