@@ -103,6 +103,7 @@ class TrainLoaderConfig:
 class MlflowConfig:
     tags: dict[str, str] = field(default_factory= lambda: {"group": "test"})
     experiment_name: str = "/Users/xiaohan.zhang@databricks.com/ppo_test"
+    log_system_metrics = True
 
 
 @dataclass
