@@ -268,7 +268,7 @@ def mlflow_initialize(cfg: MlflowConfig):
     new_run = mlflow_client.create_run(experiment_id=experiment_id, run_name=cfg.tags['run_name'])
     mlflow.start_run(
         run_id=new_run.info.run_id,
-        tags=cfg.tags
+        tags=cfg.tags,
         log_system_metrics=cfg.log_system_metrics
     )
 
