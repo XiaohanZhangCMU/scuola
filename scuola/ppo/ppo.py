@@ -351,7 +351,7 @@ def build_model_and_tokenizer(tokenizer_cfg: TokenizerConfig,
     Build HF model and tokenizer in pure PyTorch, wrap with FSDP.
     """
     # Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_cfg.name, trust_remote_code=True, padding_size="left")
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_cfg.name, trust_remote_code=True, padding_side="left")
 
     print(f"I am here 9: {tokenizer.padding_side=}")
 
