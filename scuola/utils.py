@@ -56,7 +56,7 @@ def prepare_model_inputs(
     attention_mask_t = torch.tensor(attention_mask_list, dtype=torch.long, device=device)
     labels_t = torch.tensor(labels_list, dtype=torch.long, device=device)
     # BFloat16 or float16 or float?
-    advantages_t = torch.tensor(advantages_list, dtype=torch.float, device=device)
+    advantages_t = torch.tensor(advantages_list, dtype=torch.bfloat16, device=device)
 
     return {
         "input_ids": input_ids_t,

@@ -362,11 +362,6 @@ def build_model_and_tokenizer(tokenizer_cfg: TokenizerConfig,
         attn_implementation='flash_attention_2',
     )
 
-    # Explicitly set model config for left padding
-    if hasattr(model, "config"):
-        print("I am here 11: model has config")
-        model.config.padding_side = "left"
-
     # Freeze the reference model by copy
     import copy
     reference_model = copy.deepcopy(model)
