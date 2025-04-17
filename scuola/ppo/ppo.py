@@ -466,8 +466,9 @@ def main():
     #print(list(train_dataset.select([0,10, 15])))
 
     # Figure out microbatching
-    per_device_batch_size = cfg.global_train_batch_size // world_size
-    accumulation_steps = per_device_batch_size // cfg.device_train_microbatch_size
+    per_device_batch_size = max(1, cfg.global_train_batch_size // world_size)
+    device_microbatch_size = min(per_device_batch_size, cfg.device_train_microbatch_size)
+    accumulation_steps = max(1, per_device_batch_size // device_microbatch_size)
 
     # Set up vLLM for inference
     # (If you want multi-GPU inference, set `tensor_parallel_size=cfg.inference_tp_size` etc.)
@@ -609,9 +610,14 @@ def main():
 
         # Accumulate gradient
         metrics = {}
-        for i in trange(0, cfg.episodes_per_iteration, per_device_batch_size, disable=(rank != 0)):
+        batch_count = 0
+        train_steps = len(model_inputs["input_ids"])
+
+        for i in trange(0, train_steps, device_microbatch_size, disable=(rank != 0)):
+            end_idx = min(i + device_microbatch_size, train_steps)
+
             batch = {
-                k: v[i : i + per_device_batch_size] for k, v in model_inputs.items()
+                k: v[i : end_idx] for k, v in model_inputs.items()
             }
 
             loss, loss_metrics = compute_pg_loss(
@@ -628,15 +634,18 @@ def main():
                 metrics.setdefault(k, []).append(val)
             metrics.setdefault("loss", []).append(loss.item())
 
-            # Backward
-            loss.backward()
+            # Backward on scaled loss
+            batch_size_ratio = len(batch['input_ids']) / per_device_batch_size
+            scaled_loss = loss * batch_size_ratio
+            scaled_loss.backward()
+            batch_count += 1
 
             # Step if we are at grad accumulation boundary
-            if (i // per_device_batch_size) % accumulation_steps == 0:
+            if (batch_count % accumulation_steps == 0 or end_idx >= train_steps:
                 optimizer.step()
                 optimizer.zero_grad()
 
-            del loss
+            del loss, scaled_loss
 
         # Sync policy -> vLLM
         dist.barrier()
