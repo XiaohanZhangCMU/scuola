@@ -37,14 +37,14 @@ def prepare_model_inputs(
         combined_ids = q_ids + r_ids
         seq_len = len(combined_ids)
 
-        padded_input_ids = combined_ids + [pad_token_id]*(max_seq_len - seq_len)
-        padded_attention = [1]*seq_len + [0]*(max_seq_len - seq_len)
+        padded_input_ids = [pad_token_id]*(max_seq_len - seq_len) + combined_ids
+        padded_attention = [0]*(max_seq_len - seq_len) + [1]*seq_len
 
         # Labels: mask out the query tokens with -100
-        padded_labels = [ignore_index]*len(q_ids) + r_ids + [ignore_index]*(max_seq_len - seq_len)
+        padded_labels = [ignore_index]*(max_seq_len - seq_len) + [ignore_index]*len(q_ids) + r_ids
 
         # Advantages: 0.0 for query tokens, advantage for response tokens, pad the rest
-        padded_adv = [0.0]*len(q_ids) + adv_list + [0.0]*(max_seq_len - seq_len)
+        padded_adv = [0.0]*(max_seq_len - seq_len) + [0.0]*len(q_ids) + adv_list
 
         input_ids_list.append(padded_input_ids)
         attention_mask_list.append(padded_attention)
