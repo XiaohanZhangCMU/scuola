@@ -353,6 +353,8 @@ def build_model_and_tokenizer(tokenizer_cfg: TokenizerConfig,
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_cfg.name, trust_remote_code=True, padding_size="left")
 
+    print(f"I am here 9: {tokenizer.padding_side=}")
+
     # Model
     model = AutoModelForCausalLM.from_pretrained(
         model_cfg.pretrained_model_name_or_path,
