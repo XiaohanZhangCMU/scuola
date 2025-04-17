@@ -243,11 +243,14 @@ def mlflow_initialize(cfg: MlflowConfig):
     Called once at the start by rank0, etc.
     """
     import mlflow
+    import uuid
 
     if not os.getenv('DATABRICKS_TOKEN') or not os.getenv('DATABRICKS_HOST'):
         raise KeyError(f"Missing env vars of DATABRICKS_TOKEN or DATABRICKS_HOST")
 
     tracking_uri = 'databricks'
+    runname = f'exp-run-{uuid.uuid4().hex[:4]}-rank{dist.get_global_rank()}'
+
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(cfg.experiment_name)
     if cfg.log_system_metrics:
@@ -257,9 +260,7 @@ def mlflow_initialize(cfg: MlflowConfig):
         mlflow.set_system_metrics_samples_before_logging(3)
         mlflow.set_system_metrics_sampling_interval(5)
 
-    tags = cfg.tags
-    cfg.tags['run_name'] += f'-rank{dist.get_global_rank()}'
-
+    cfg.tags['run_name'] = runname
     mlflow_client = MlflowClient(tracking_uri)
     experiment_id = mlflow_client.get_experiment_by_name(
         name=cfg.experiment_name
