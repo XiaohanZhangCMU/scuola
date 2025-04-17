@@ -349,9 +349,7 @@ def build_model_and_tokenizer(tokenizer_cfg: TokenizerConfig,
     Build HF model and tokenizer in pure PyTorch, wrap with FSDP.
     """
     # Tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_cfg.name, trust_remote_code=True)
-    # For the custom "apply_chat_template" used above, either define your own or remove that pattern.
-    tokenizer.padding_side = 'left' # for flash attn v2
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_cfg.name, trust_remote_code=True, padding_size="left")
 
     # Model
     model = AutoModelForCausalLM.from_pretrained(
@@ -359,6 +357,12 @@ def build_model_and_tokenizer(tokenizer_cfg: TokenizerConfig,
         trust_remote_code=True,
         attn_implementation='flash_attention_2',
     )
+
+    # Explicitly set model config for left padding
+    if hasattr(model, "config"):
+        print("I am here 11: model has config")
+        model.config._padding_side = "left"
+
     # Freeze the reference model by copy
     import copy
     reference_model = copy.deepcopy(model)
