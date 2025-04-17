@@ -351,6 +351,7 @@ def build_model_and_tokenizer(tokenizer_cfg: TokenizerConfig,
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_cfg.name, trust_remote_code=True)
     # For the custom "apply_chat_template" used above, either define your own or remove that pattern.
+    tokenizer.padding_side = 'left' # for flash attn v2
 
     # Model
     model = AutoModelForCausalLM.from_pretrained(
@@ -451,6 +452,9 @@ def main():
     # Load dataset
     train_dataset, test_dataset = data_prep(tokenizer, cfg.train_loader.dataset)
 
+    #print(f"I am here {type(train_dataset)=}")
+    #print(list(train_dataset.select([0,10, 15])))
+
     # Figure out microbatching
     per_device_batch_size = cfg.global_train_batch_size // world_size
     accumulation_steps = per_device_batch_size // cfg.device_train_microbatch_size
@@ -528,8 +532,8 @@ def main():
         indices = np.random.choice(len(train_dataset), size=num_samples, replace=False)
         print(f"I am here 2. {rank=}: {indices=}")
         #samples = [train_dataset[i] for i in indices]
-        samples = train_dataset[indices]
-        print(f"I am here 3. {rank=}: {samples=}")
+        samples = train_dataset.select(indices)
+        #print(f"I am here 3. {rank=}: {samples=}")
 
 
         # Inference to get responses
