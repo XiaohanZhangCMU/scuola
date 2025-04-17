@@ -494,9 +494,8 @@ def main():
     eos_token = tokenizer.convert_ids_to_tokens(eos_token_id)
 
     # (Optional) init MLflow only on rank 0
-    if rank == 0:
-        mlflow_initialize(cfg.loggers.mlflow)
-        mlflow_log_params(vars(cfg))
+    mlflow_initialize(cfg.loggers.mlflow)
+    mlflow_log_params(vars(cfg))
 
     # Optionally load weights into vLLM once at start
     dist.barrier()

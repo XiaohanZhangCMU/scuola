@@ -247,7 +247,6 @@ def mlflow_initialize(cfg: MlflowConfig):
     if not os.getenv('DATABRICKS_TOKEN') or not os.getenv('DATABRICKS_HOST'):
         raise KeyError(f"Missing env vars of DATABRICKS_TOKEN or DATABRICKS_HOST")
 
-    databricks_username = WorkspaceClient().current_user.me().user_name or ''
     tracking_uri = 'databricks'
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(cfg.experiment_name)
