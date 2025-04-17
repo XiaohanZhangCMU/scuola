@@ -249,7 +249,12 @@ def mlflow_initialize(cfg: MlflowConfig):
         raise KeyError(f"Missing env vars of DATABRICKS_TOKEN or DATABRICKS_HOST")
 
     tracking_uri = 'databricks'
-    runname = f'exp-run-{uuid.uuid4().hex[:4]}-rank{dist.get_global_rank()}'
+    if not dist.is_initialized() or not dist.is_available():
+        raise RuntimeError(f"torch.distributed is not initialized or not available."+
+        "Make usre call mlflow_initialize() after torch.init_process_group is called")
+
+    rank = dist.get_rank()
+    runname = f'exp-run-{uuid.uuid4().hex[:4]}-rank{rank}'
 
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(cfg.experiment_name)
