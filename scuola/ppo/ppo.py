@@ -562,7 +562,7 @@ def main():
 
         # Build episodes
         episodes, episodes_stats = create_training_episodes(
-            samples,
+            samples["input_ids"],
             all_generations,
             all_finish_reasons,
             tokenizer,
