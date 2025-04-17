@@ -442,6 +442,8 @@ def main():
     # Build model & tokenizer
     policy_model, reference_model, tokenizer = build_model_and_tokenizer(cfg.tokenizer, cfg.model)
 
+    print(f"I am here 14: {tokenizer.padding_side=}")
+
     if cfg.mixed_precision:
         policy_model = policy_model.half()
         reference_model = reference_model.half()
@@ -457,6 +459,8 @@ def main():
 
     # Load dataset
     train_dataset, test_dataset = data_prep(tokenizer, cfg.train_loader.dataset)
+
+    print(f"I am here 15: {tokenizer.padding_side=}")
 
     #print(f"I am here {type(train_dataset)=}")
     #print(list(train_dataset.select([0,10, 15])))
@@ -478,9 +482,11 @@ def main():
         max_model_len=2048,
         enable_sleep_mode=False,
         disable_log_stats=True,
-        skip_tokenizer_init=False,
+        skip_tokenizer_init=True,
         seed=cfg.seed,
     )
+
+    print(f"I am here 16: {tokenizer.padding_side=}")
 
     # EOS details
     eos_token_id = tokenizer.eos_token_id
@@ -581,6 +587,7 @@ def main():
             cfg.generations_per_sample,
         )
 
+        print(f"I am here 17: {tokenizer.padding_side=}")
         # Dump a couple examples on rank0
         if rank == 0:
             dump_episodes(None, episodes, episodes_stats, tokenizer, iteration, is_eval=False)
