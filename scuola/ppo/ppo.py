@@ -522,6 +522,7 @@ def main():
         # Sample training batch
         #   episodes_per_iteration => how many new episodes we gather each iteration
         #   generations_per_sample => how many completions per input
+        np.random.seed(17)
         num_samples = cfg.episodes_per_iteration // cfg.generations_per_sample
         indices = np.random.choice(len(train_dataset), size=num_samples, replace=False)
         #samples = [train_dataset[i] for i in indices]
