@@ -18,7 +18,6 @@ from torch.distributed.fsdp import (
 )
 import numpy as np
 from tqdm import trange
-import mlflow
 
 from datasets import load_dataset
 
@@ -36,7 +35,8 @@ from transformers import (
 # --------------
 from scuola.utils import (
     prepare_model_inputs, compute_token_log_probs, evaluate_on_test_set,
-    dump_episodes, load_model_into_vllm, init_mlflow,
+    dump_episodes, load_model_into_vllm,
+    mlflow_initialize, mlflow_log_params, mlflow_end_run, mlflow_log_metric
 )
 from scuola.config import (
     ModelConfig, TokenizerConfig, FsdpConfig, VllmConfig, SchedulerConfig,
@@ -495,9 +495,8 @@ def main():
 
     # (Optional) init MLflow only on rank 0
     if rank == 0:
-        mlflow.set_experiment("PPO_Experiment")
-        mlflow.start_run()
-        mlflow.log_params(vars(cfg))
+        mlflow_initialize(cfg.loggers.mlflow)
+        mlflow_log_params(vars(cfg))
 
     # Optionally load weights into vLLM once at start
     dist.barrier()
@@ -534,7 +533,7 @@ def main():
                 # Log average reward to MLflow
                 if "rewards" in eval_stats and len(eval_stats["rewards"]) > 0:
                     avg_eval_reward = float(np.mean(eval_stats["rewards"]))
-                    mlflow.log_metric("eval/reward", avg_eval_reward, step=iteration)
+                    mlflow_log_metric("eval/reward", avg_eval_reward, step=iteration)
 
         # Sample training batch
         #   episodes_per_iteration => how many new episodes we gather each iteration
@@ -657,11 +656,10 @@ def main():
         if rank == 0 and len(metrics["loss"]) > 0:
             train_metrics = {k: float(np.mean(vals)) for k, vals in metrics.items()}
             for k, v in train_metrics.items():
-                mlflow.log_metric(f"train/{k}", v, step=iteration)
+                mlflow_log_metric(f"train/{k}", v, step=iteration)
 
     # End training
-    if rank == 0:
-        mlflow.end_run()
+    mlflow_end_run()
     dist.barrier()
 
 if __name__ == "__main__":

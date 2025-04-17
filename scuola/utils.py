@@ -12,6 +12,8 @@ import numpy as np
 
 from transformers import AutoTokenizer, PreTrainedModel
 
+from scuola.config import Config, MlflowConfig
+
 ###############################################################################
 # Prepare Model Inputs
 ###############################################################################
@@ -235,10 +237,49 @@ def load_model_into_vllm(model: FSDP, llm: LLM) -> None:
 ###############################################################################
 # Optional: MLflow
 ###############################################################################
-def init_mlflow(*args, **kwargs):
+def mlflow_initialize(cfg: MlflowConfig):
     """
     Example stub if you want to integrate MLflow logging.
     Called once at the start by rank0, etc.
     """
-    pass
+    import mlflow
 
+    if not os.getenv('DATABRICKS_TOKEN') or not os.getenv('DATABRICKS_HOST'):
+        raise KeyError(f"Missing env vars of DATABRICKS_TOKEN or DATABRICKS_HOST")
+
+    databricks_username = WorkspaceClient().current_user.me().user_name or ''
+    tracking_uri = 'databricks'
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(cfg.experiment_name)
+    if cfg.log_system_metrics:
+        # Set system metrics sampling interval and samples before logging so that system metrics
+        # are collected every 5s, and aggregated over 3 samples before being logged
+        # (logging per 15s).
+        mlflow.set_system_metrics_samples_before_logging(3)
+        mlflow.set_system_metrics_sampling_interval(5)
+
+    tags = cfg.tags
+    cfg.tags['run_name'] += f'-rank{dist.get_global_rank()}'
+
+    mlflow_client = MlflowClient(tracking_uri)
+    experiment_id = mlflow_client.get_experiment_by_name(
+        name=cfg.experiment_name
+    ).experiment_id
+    new_run = mlflow_client.create_run(experiment_id=experiment_id, run_name=cfg.tags['run_name'])
+    mlflow.start_run(
+        run_id=new_run.info.run_id,
+        tags=cfg.tags
+        log_system_metrics=cfg.log_system_metrics
+    )
+
+def mlflow_log_params(cfg: Config):
+    import mlflow
+    mlflow.log_params(vars(cfg))
+
+def mlflow_log_params(val: Any, step: int):
+    import mlflow
+    mlflow.log_metric(val, step)
+
+def mlflow_end():
+    import mlflow
+    mlflow.end_run()
