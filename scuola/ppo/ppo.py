@@ -166,6 +166,8 @@ def create_training_episodes(
         "non_stop_rate": [],
     }
 
+    print(f"I am here 12: {tokenizer.padding_side=}")
+
     # Loop over each input sample
     for sample, group_indices in zip(samples, groups):
         # Gather the generations for this sample
