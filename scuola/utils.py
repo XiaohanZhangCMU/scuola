@@ -244,6 +244,7 @@ def mlflow_initialize(cfg: MlflowConfig):
     """
     import mlflow
     import uuid
+    from mlflow import MlflowClient
 
     if not os.getenv('DATABRICKS_TOKEN') or not os.getenv('DATABRICKS_HOST'):
         raise KeyError(f"Missing env vars of DATABRICKS_TOKEN or DATABRICKS_HOST")
