@@ -6,7 +6,7 @@ import json
 import logging
 import argparse
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -93,7 +93,7 @@ def format_reward_func(completion: str, eos_token: str) -> float:
     except:
         return 0.0
 
-def equation_reward_func(completion: str, nums: List[int], target: int) -> float:
+def equation_reward_func(completion: str, nums: list[int], target: int) -> float:
     """
     Checks if the final <answer> expression is mathematically correct, uses all numbers exactly once, etc.
     """
@@ -118,7 +118,7 @@ def equation_reward_func(completion: str, nums: List[int], target: int) -> float
     except:
         return 0.0
 
-def compute_reward(completion: str, sample: Dict[str, Any], eos_token: str) -> Tuple[float, Dict[str, float]]:
+def compute_reward(completion: str, sample: dict[str, list], eos_token: str) -> Tuple[float, dict[str, float]]:
     """
     Total reward = format_reward + equation_reward
     """
@@ -136,14 +136,14 @@ def compute_reward(completion: str, sample: Dict[str, Any], eos_token: str) -> T
 ###############################################################################
 
 def create_training_episodes(
-    samples: List[Dict[str, Any]],
-    all_generations: List[List[int]],
-    all_finish_reasons: List[str],
+    samples: dict[str, list],
+    all_generations: list[list[int]],
+    all_finish_reasons: list[str],
     tokenizer: AutoTokenizer,
     eos_token_id: int,
     eos_token: str,
     generations_per_sample: int,
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+) -> Tuple[dict[str, Any], dict[str, Any]]:
     """
     Group the generations by sample, compute rewards, compute normalized advantages.
     """
@@ -213,11 +213,11 @@ def create_training_episodes(
 def compute_pg_loss(
     policy_model: nn.Module,
     reference_model: nn.Module,
-    batch: Dict[str, torch.Tensor],
+    batch: dict[str, torch.Tensor],
     total_response_len: int,
     temperature: float,
     kl_coefficient: float,
-) -> Tuple[torch.Tensor, Dict[str, float]]:
+) -> Tuple[torch.Tensor, dict[str, float]]:
     """
     1. log_probs for policy_model & reference_model
     2. KL penalty
@@ -275,7 +275,7 @@ def compute_pg_loss(
 ###############################################################################
 
 def preprocess_example(
-    example: Dict[str, Any],
+    example: dict[str, Any],
     tokenizer: AutoTokenizer,
 ):
     """
@@ -562,7 +562,7 @@ def main():
 
         # Build episodes
         episodes, episodes_stats = create_training_episodes(
-            samples["input_ids"],
+            samples,
             all_generations,
             all_finish_reasons,
             tokenizer,
