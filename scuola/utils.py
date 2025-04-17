@@ -113,16 +113,19 @@ def evaluate_on_test_set(
     eos_token: str,
     eval_sampling_params: SamplingParams,
     reward_func: Callable[[str, Dict[str, Any]], Tuple[float, Dict[str, float]]],
+    local_rank: int
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Use vLLM to generate from test set prompts, compute reward.
     """
+    print(f"I am here 1")
     # Generate
     generations = inference_engine.generate(
         prompt_token_ids=test_dataset["input_ids"],
         sampling_params=eval_sampling_params,
     )
 
+    print(f"I am here 2")
     metrics = {
         "response_lengths": [],
         "rewards": [],
@@ -132,6 +135,7 @@ def evaluate_on_test_set(
     all_query_token_ids = []
     all_responses_token_ids = []
 
+    print(f"I am here 3")
     for i, sample in enumerate(test_dataset):
         q_ids = sample["input_ids"]
         # vLLM returns [Out...], so for each i, we have one set of outputs
@@ -150,6 +154,7 @@ def evaluate_on_test_set(
         for k, v in rew_components.items():
             metrics.setdefault(f"reward_metrics/{k}", []).append(v)
 
+    print(f"I am here 4")
     episodes = {
         "all_query_token_ids": all_query_token_ids,
         "all_response_token_ids": all_responses_token_ids,

@@ -147,8 +147,8 @@ def create_training_episodes(
     """
     Group the generations by sample, compute rewards, compute normalized advantages.
     """
-    assert len(all_generations) == len(samples) * generations_per_sample
-    assert len(all_generations) == len(all_finish_reasons)
+    assert len(all_generations) == len(samples) * generations_per_sample, f"Got {len(all_generations)=} vs {len(samples)=} x {generations_per_sample=}"
+    assert len(all_generations) == len(all_finish_reasons), f"But got {len(all_generations)=} vs {len(all_finished_reasons)=}"
 
     # Group indices
     groups = [
@@ -494,7 +494,7 @@ def main():
 
     for iteration in trange(begin_iter, cfg.num_iterations, disable=(rank != 0)):
         # Evaluate every N steps
-        if iteration % cfg.eval_interval == 0 and rank == 0:
+        if iteration % cfg.eval_interval == 0:
             log.info(f"Rank0: Evaluating at iteration={iteration}")
             eval_episodes, eval_stats = evaluate_on_test_set(
                 inference_engine=inference_engine,
@@ -509,13 +509,15 @@ def main():
                     stop_token_ids=[eos_token_id],
                 ),
                 reward_func=lambda c, s: compute_reward(c, s, eos_token),
+                local_rank = local_rank,
             )
             # Dump some example lines
-            dump_episodes(None, eval_episodes, eval_stats, tokenizer, iteration, is_eval=True)
-            # Log average reward to MLflow
-            if "rewards" in eval_stats and len(eval_stats["rewards"]) > 0:
-                avg_eval_reward = float(np.mean(eval_stats["rewards"]))
-                mlflow.log_metric("eval/reward", avg_eval_reward, step=iteration)
+            if rank == 0:
+                dump_episodes(None, eval_episodes, eval_stats, tokenizer, iteration, is_eval=True)
+                # Log average reward to MLflow
+                if "rewards" in eval_stats and len(eval_stats["rewards"]) > 0:
+                    avg_eval_reward = float(np.mean(eval_stats["rewards"]))
+                    mlflow.log_metric("eval/reward", avg_eval_reward, step=iteration)
 
         # Sample training batch
         #   episodes_per_iteration => how many new episodes we gather each iteration
@@ -530,12 +532,12 @@ def main():
         gen_time = time.time()
 
         outputs = inference_engine.generate(
-            prompt_token_ids=[s["input_ids"] for s in samples],
+            prompt_token_ids=samples["input_ids"],
             sampling_params=SamplingParams(
                 n=cfg.generations_per_sample,
                 temperature=cfg.temperature,
                 top_p=cfg.top_p,
-                top_k=cfg.top_k if cfg.top_k > 0 else None,
+                top_k=cfg.top_k,
                 max_tokens=cfg.max_response_tokens,
                 detokenize=False,
                 stop_token_ids=[eos_token_id],
