@@ -276,10 +276,10 @@ def mlflow_log_params(cfg: Config):
     import mlflow
     mlflow.log_params(vars(cfg))
 
-def mlflow_log_params(val: Any, step: int):
+def mlflow_log_metric(val: Any, step: int):
     import mlflow
     mlflow.log_metric(val, step)
 
-def mlflow_end():
+def mlflow_end_run():
     import mlflow
     mlflow.end_run()
