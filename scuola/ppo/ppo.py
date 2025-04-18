@@ -19,7 +19,7 @@ from torch.distributed.fsdp import (
 import numpy as np
 from tqdm import trange
 
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 
 # For inference
 from vllm import LLM, SamplingParams
@@ -136,7 +136,7 @@ def compute_reward(completion: str, sample: dict[str, list], eos_token: str) -> 
 ###############################################################################
 
 def create_training_episodes(
-    samples: dict[str, list],
+    samples: Dataset,
     all_generations: list[list[int]],
     all_finish_reasons: list[str],
     tokenizer: AutoTokenizer,
@@ -181,6 +181,8 @@ def create_training_episodes(
 
         rewards_np = np.array(rewards)
         advantages_np = (rewards_np - rewards_np.mean()) / (rewards_np.std() + 1e-4)
+
+        log.info("Advantage mean:", advantages_np.mean(), "std:", advantages_np.std())
 
         per_token_adv = [
             [adv] * len(r_ids)
@@ -616,6 +618,8 @@ def main():
             scaled_loss = loss * batch_size_ratio
             scaled_loss.backward()
             batch_count += 1
+
+            #torch.nn.utils.clip_grad_norm_(fsdp_policy.parameters(), max_norm=1.0)
 
             # Step if we are at grad accumulation boundary
             if (batch_count % accumulation_steps == 0) or (end_idx >= train_steps):
