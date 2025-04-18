@@ -495,7 +495,7 @@ def main():
 
     # (Optional) init MLflow only on rank 0
     mlflow_initialize(cfg.loggers.mlflow)
-    mlflow_log_params(vars(cfg))
+    mlflow_log_params(cfg)
 
     # Optionally load weights into vLLM once at start
     dist.barrier()
