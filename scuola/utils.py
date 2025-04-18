@@ -4,7 +4,7 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-from typing import Any, Dict, List, Tuple, Callable
+from typing import Any, Optional, Tuple, Callable
 
 from vllm import LLM, SamplingParams
 from datasets import Dataset
@@ -18,11 +18,11 @@ from scuola.config import Config, MlflowConfig
 # Prepare Model Inputs
 ###############################################################################
 def prepare_model_inputs(
-    query_token_ids: List[List[int]],
-    response_token_ids: List[List[int]],
-    advantages: List[List[float]],
+    query_token_ids: list[list[int]],
+    response_token_ids: list[list[int]],
+    advantages: list[list[float]],
     device: torch.device,
-) -> Dict[str, torch.Tensor]:
+) -> dict[str, torch.Tensor]:
     """
     Same logic: pad queries + responses into a single sequence, build masks, build label, etc.
     """
@@ -74,7 +74,7 @@ def prepare_model_inputs(
 ###############################################################################
 def compute_token_log_probs(
     model: nn.Module,
-    inputs: Dict[str, torch.Tensor],
+    inputs: dict[str, torch.Tensor],
     temperature: float,
 ) -> torch.Tensor:
     """
@@ -116,9 +116,9 @@ def evaluate_on_test_set(
     tokenizer: AutoTokenizer,
     eos_token: str,
     eval_sampling_params: SamplingParams,
-    reward_func: Callable[[str, Dict[str, Any]], Tuple[float, Dict[str, float]]],
+    reward_func: Callable[[str, dict[str, Any]], Tuple[float, dict[str, float]]],
     local_rank: int
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+) -> Tuple[dict[str, Any], dict[str, Any]]:
     """
     Use vLLM to generate from test set prompts, compute reward.
     """
@@ -171,12 +171,12 @@ def evaluate_on_test_set(
 ###############################################################################
 def dump_episodes(
     logger,  # ignoring logger here for minimal code
-    episodes: Dict[str, Any],
-    episodes_stats: Dict[str, Any],
+    episodes: dict[str, Any],
+    episodes_stats: dict[str, Any],
     tokenizer: AutoTokenizer,
     iteration: int,
     is_eval: bool = False,
-) -> List[List[Any]]:
+) -> list[list[Any]]:
     """
     Print a few examples for debug.
     If you want to store to MLflow or something, do it here.
