@@ -280,7 +280,19 @@ def mlflow_initialize(cfg: MlflowConfig):
 
 def mlflow_log_params(cfg: Config):
     import mlflow
-    mlflow.log_params(vars(cfg))
+    from collections.abc import Mapping
+
+    def _flatten(d: Mapping, prefix: str = '', sep: str = '.') -> dict[str, Any]:
+        out = {}
+        for k, v in d.items():
+            key = f'{prefix}{sep}{k}' if prefix else k
+            if isinstance(v, Mapping):
+                out.update(_flatten(v, key, sep))
+            else:
+                out[key] = v
+        return out
+    flat = _flatten(cfg.to_dict())
+    mlflow.log_params(flat)
 
 def mlflow_log_metric(val: Any, step: int):
     import mlflow
