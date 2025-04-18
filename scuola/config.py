@@ -150,10 +150,16 @@ class Config:
     progress_bar: bool = False
     mixed_precision: bool = False
 
+    def to_dict(self) -> dict[str, Any]:
+        """Return a plain Python `dict` with every nested dataclass resolved."""
+        return OmegaConf.to_container(
+            OmegaConf.create(asdict(self)),
+            resolve=True,
+        )
+
     def __repr__(self) -> str:
         """Convert to str via OmegaConf (resolves any remaining references)"""
-        return json.dumps(OmegaConf.to_container(OmegaConf.create(asdict(self)), resolve=True), indent=2, default=str)
-
+        return json.dumps(self.to_dict(), indent=2, default=str)
 
 def load_config(config_path: str) -> Config:
     """
