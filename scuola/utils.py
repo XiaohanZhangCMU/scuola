@@ -294,9 +294,14 @@ def mlflow_log_params(cfg: Config):
     flat = _flatten(cfg.to_dict())
     mlflow.log_params(flat)
 
-def mlflow_log_metric(val: Any, step: int):
-    import mlflow
-    mlflow.log_metric(val, step)
+def mlflow_log_metrics(metrics: dict[str, Any], step: Optional[int] = None):
+    from mlflow import log_metrics
+
+    log_metrics(
+        metrics=metrics,
+        step=step,
+        synchronous=True,
+    )
 
 def mlflow_end_run():
     import mlflow
