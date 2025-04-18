@@ -182,7 +182,7 @@ def create_training_episodes(
         rewards_np = np.array(rewards)
         advantages_np = (rewards_np - rewards_np.mean()) / (rewards_np.std() + 1e-4)
 
-        log.info("Advantage mean:", advantages_np.mean(), "std:", advantages_np.std())
+        log.info(f"Advantage mean: {advantages_np.mean()}, std: {advantages_np.std()}")
 
         per_token_adv = [
             [adv] * len(r_ids)
