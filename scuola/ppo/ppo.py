@@ -166,8 +166,6 @@ def create_training_episodes(
         "non_stop_rate": [],
     }
 
-    print(f"I am here 12: {tokenizer.padding_side=}")
-
     # Loop over each input sample
     for sample, group_indices in zip(samples, groups):
         # Gather the generations for this sample
@@ -230,8 +228,6 @@ def compute_pg_loss(
     attention_mask = batch["attention_mask"]
     labels = batch["labels"]
     advantages = batch["advantages"]
-
-    print(f"I am here 19: {advantages.dtype=}")
 
     model_inputs = {
         "input_ids": input_ids,
@@ -355,8 +351,6 @@ def build_model_and_tokenizer(tokenizer_cfg: TokenizerConfig,
     # Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_cfg.name, trust_remote_code=True, padding_side="left")
 
-    print(f"I am here 9: {tokenizer.padding_side=}")
-
     # Model
     model = AutoModelForCausalLM.from_pretrained(
         model_cfg.pretrained_model_name_or_path,
@@ -442,8 +436,6 @@ def main():
     # Build model & tokenizer
     policy_model, reference_model, tokenizer = build_model_and_tokenizer(cfg.tokenizer, cfg.model)
 
-    print(f"I am here 14: {tokenizer.padding_side=}")
-
     if cfg.mixed_precision:
         policy_model = policy_model.half()
         reference_model = reference_model.half()
@@ -459,11 +451,6 @@ def main():
 
     # Load dataset
     train_dataset, test_dataset = data_prep(tokenizer, cfg.train_loader.dataset)
-
-    print(f"I am here 15: {tokenizer.padding_side=}")
-
-    #print(f"I am here {type(train_dataset)=}")
-    #print(list(train_dataset.select([0,10, 15])))
 
     # Figure out microbatching
     per_device_batch_size = max(1, cfg.global_train_batch_size // world_size)
@@ -486,8 +473,6 @@ def main():
         skip_tokenizer_init=True,
         seed=cfg.seed,
     )
-
-    print(f"I am here 16: {tokenizer.padding_side=}")
 
     # EOS details
     eos_token_id = tokenizer.eos_token_id
@@ -539,13 +524,8 @@ def main():
         #   generations_per_sample => how many completions per input
         np.random.seed(17)
         num_samples = cfg.episodes_per_iteration // cfg.generations_per_sample
-        print(f"I am here 1. {rank=}: {num_samples=}")
         indices = np.random.choice(len(train_dataset), size=num_samples, replace=False)
-        print(f"I am here 2. {rank=}: {indices=}")
-        #samples = [train_dataset[i] for i in indices]
         samples = train_dataset.select(indices)
-        #print(f"I am here 3. {rank=}: {samples=}")
-
 
         # Inference to get responses
         dist.barrier()
@@ -586,7 +566,6 @@ def main():
             cfg.generations_per_sample,
         )
 
-        print(f"I am here 17: {tokenizer.padding_side=}")
         # Dump a couple examples on rank0
         if rank == 0:
             dump_episodes(None, episodes, episodes_stats, tokenizer, iteration, is_eval=False)

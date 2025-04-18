@@ -60,8 +60,6 @@ def prepare_model_inputs(
     # BFloat16 or float16 or float?
     advantages_t = torch.tensor(advantages_list, dtype=torch.bfloat16, device=device)
 
-    print(f"I am here 20: {advantages_t.dtype=}")
-
     return {
         "input_ids": input_ids_t,
         "attention_mask": attention_mask_t,
@@ -122,14 +120,12 @@ def evaluate_on_test_set(
     """
     Use vLLM to generate from test set prompts, compute reward.
     """
-    print(f"I am here 1")
     # Generate
     generations = inference_engine.generate(
         prompt_token_ids=test_dataset["input_ids"],
         sampling_params=eval_sampling_params,
     )
 
-    print(f"I am here 2")
     metrics = {
         "response_lengths": [],
         "rewards": [],
@@ -139,7 +135,6 @@ def evaluate_on_test_set(
     all_query_token_ids = []
     all_responses_token_ids = []
 
-    print(f"I am here 3")
     for i, sample in enumerate(test_dataset):
         q_ids = sample["input_ids"]
         # vLLM returns [Out...], so for each i, we have one set of outputs
@@ -158,7 +153,6 @@ def evaluate_on_test_set(
         for k, v in rew_components.items():
             metrics.setdefault(f"reward_metrics/{k}", []).append(v)
 
-    print(f"I am here 4")
     episodes = {
         "all_query_token_ids": all_query_token_ids,
         "all_response_token_ids": all_responses_token_ids,
