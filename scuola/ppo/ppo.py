@@ -77,7 +77,7 @@ def format_reward_func(completion: str, eos_token: str) -> float:
     allowed_pattern = r"^[\d+\-*/().\s]+$"
     try:
         # Some lines add <think> at the start
-        #completion = "<think>" + completion
+        completion = "<think>" + completion
 
         # Remove EOS if present
         if completion.endswith(eos_token):
