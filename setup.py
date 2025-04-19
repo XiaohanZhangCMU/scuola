@@ -1,6 +1,8 @@
-# Copyright 2022-2024 scuola authors
+# Copyright 2024  Xiaohan Zhang
 # SPDX-License-Identifier: Apache-2.0
 
+# Copyright 2022-2024 scuola authors
+# SPDX-License-Identifier: Apache-2.0
 """scuola package setup."""
 
 import os
@@ -10,7 +12,8 @@ from setuptools import setup
 
 # Read the scuola version
 # Cannot import from `scuola.__version__` since that will not be available when building or installing the package
-with open(os.path.join(os.path.dirname(__file__), 'scuola', '_version.py')) as f:
+with open(os.path.join(os.path.dirname(__file__), 'scuola',
+                       '_version.py')) as f:
     version_globals = {}
     version_locals = {}
     exec(f.read(), version_globals, version_locals)
@@ -32,7 +35,8 @@ while True:
         break
     else:
         assert end != -1, 'there should be a balanced number of start and ends'
-        long_description = long_description[:start] + long_description[end + len(end_tag):]
+        long_description = long_description[:start] + long_description[
+            end + len(end_tag):]
 
 classifiers = [
     'Programming Language :: Python :: 3.11',
@@ -40,16 +44,16 @@ classifiers = [
 ]
 
 install_requires = [
-    "torch>=2.6,<3",
-    "vllm>=0.8.2",
-    "transformers>=4.51",
-    "accelerate==1.4.0",
-    "datasets==3.3.2",
-    "deepspeed==0.16.4",
-    "wandb==0.19.7",
-    "ipykernel==6.29.5",
-    "ipywidgets==8.1.5",
-    "jupyter==1.1.1",
+    'torch>=2.6,<3',
+    'vllm>=0.8.2',
+    'transformers>=4.51',
+    'accelerate==1.4.0',
+    'datasets==3.3.2',
+    'deepspeed==0.16.4',
+    'wandb==0.19.7',
+    'ipykernel==6.29.5',
+    'ipywidgets==8.1.5',
+    'jupyter==1.1.1',
 ]
 
 extra_deps = {}
@@ -97,11 +101,14 @@ extra_deps['testing'] = [
 ]
 
 extra_deps['all'] = {
-    dep for key, deps in extra_deps.items() for dep in deps
+    dep
+    for key, deps in extra_deps.items() for dep in deps
     if key not in {'gpu-flash2'}
 }
 
-extra_deps['all-gpu'] = sorted({dep for deps in extra_deps.values() for dep in deps})
+extra_deps['all-gpu'] = sorted(
+    {dep
+     for deps in extra_deps.values() for dep in deps})
 
 package_name = 'scuola'
 
@@ -123,7 +130,9 @@ setup(
     },
     packages=setuptools.find_packages(exclude=['tests*']),
     entry_points={
-        'console_scripts': ['simulator = simulation.launcher:launch_simulation_ui',],
+        'console_scripts': [
+            'simulator = simulation.launcher:launch_simulation_ui',
+        ],
     },
     classifiers=classifiers,
     install_requires=install_requires,

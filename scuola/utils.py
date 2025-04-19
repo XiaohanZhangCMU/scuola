@@ -1,18 +1,23 @@
+# Copyright 2024  Xiaohan Zhang
+# SPDX-License-Identifier: Apache-2.0
+
 # utils.py
 import os
+import uuid
+from typing import Any, Callable, Mapping, Optional, Tuple
+
+import mlflow
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-from typing import Any, Optional, Tuple, Callable
-
-from vllm import LLM, SamplingParams
 from datasets import Dataset
-import numpy as np
-
-from transformers import AutoTokenizer, PreTrainedModel
+from mlflow import MlflowClient, log_metrics
+from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+from transformers import AutoTokenizer
+from vllm import LLM, SamplingParams
 
 from scuola.config import Config, MlflowConfig
+
 
 ###############################################################################
 # Prepare Model Inputs
@@ -23,10 +28,10 @@ def prepare_model_inputs(
     advantages: list[list[float]],
     device: torch.device,
 ) -> dict[str, torch.Tensor]:
-    """
-    Same logic: pad queries + responses into a single sequence, build masks, build label, etc.
-    """
-    max_seq_len = max(len(q) + len(r) for q, r in zip(query_token_ids, response_token_ids))
+    """Same logic: pad queries + responses into a single sequence, build masks, build label,
+    etc."""
+    max_seq_len = max(
+        len(q) + len(r) for q, r in zip(query_token_ids, response_token_ids))
     pad_token_id = 0
     ignore_index = -100
 
@@ -35,18 +40,22 @@ def prepare_model_inputs(
     labels_list = []
     advantages_list = []
 
-    for q_ids, r_ids, adv_list in zip(query_token_ids, response_token_ids, advantages):
+    for q_ids, r_ids, adv_list in zip(query_token_ids, response_token_ids,
+                                      advantages):
         combined_ids = q_ids + r_ids
         seq_len = len(combined_ids)
 
-        padded_input_ids = [pad_token_id]*(max_seq_len - seq_len) + combined_ids
-        padded_attention = [0]*(max_seq_len - seq_len) + [1]*seq_len
+        padded_input_ids = [pad_token_id
+                            ] * (max_seq_len - seq_len) + combined_ids
+        padded_attention = [0] * (max_seq_len - seq_len) + [1] * seq_len
 
         # Labels: mask out the query tokens with -100
-        padded_labels = [ignore_index]*(max_seq_len - seq_len) + [ignore_index]*len(q_ids) + r_ids
+        padded_labels = [ignore_index] * (
+            max_seq_len - seq_len) + [ignore_index] * len(q_ids) + r_ids
 
         # Advantages: 0.0 for query tokens, advantage for response tokens, pad the rest
-        padded_adv = [0.0]*(max_seq_len - seq_len) + [0.0]*len(q_ids) + adv_list
+        padded_adv = [0.0] * (max_seq_len -
+                              seq_len) + [0.0] * len(q_ids) + adv_list
 
         input_ids_list.append(padded_input_ids)
         attention_mask_list.append(padded_attention)
@@ -55,17 +64,22 @@ def prepare_model_inputs(
 
     # Convert
     input_ids_t = torch.tensor(input_ids_list, dtype=torch.long, device=device)
-    attention_mask_t = torch.tensor(attention_mask_list, dtype=torch.long, device=device)
+    attention_mask_t = torch.tensor(attention_mask_list,
+                                    dtype=torch.long,
+                                    device=device)
     labels_t = torch.tensor(labels_list, dtype=torch.long, device=device)
     # BFloat16 or float16 or float?
-    advantages_t = torch.tensor(advantages_list, dtype=torch.bfloat16, device=device)
+    advantages_t = torch.tensor(advantages_list,
+                                dtype=torch.bfloat16,
+                                device=device)
 
     return {
-        "input_ids": input_ids_t,
-        "attention_mask": attention_mask_t,
-        "labels": labels_t,
-        "advantages": advantages_t,
+        'input_ids': input_ids_t,
+        'attention_mask': attention_mask_t,
+        'labels': labels_t,
+        'advantages': advantages_t,
     }
+
 
 ###############################################################################
 # Compute Token Log Probs
@@ -84,8 +98,8 @@ def compute_token_log_probs(
     # forward pass
     # We expect a standard HF Causal LM that returns `logits`
     out = model(
-        input_ids=inputs["input_ids"],
-        attention_mask=inputs["attention_mask"],
+        input_ids=inputs['input_ids'],
+        attention_mask=inputs['attention_mask'],
     )
     logits = out.logits
     # Temperature scale
@@ -93,14 +107,15 @@ def compute_token_log_probs(
 
     # shift
     shift_logits = logits[..., :-1, :].contiguous()
-    shift_labels = inputs["labels"][..., 1:].contiguous()
+    shift_labels = inputs['labels'][..., 1:].contiguous()
 
     # mask
     label_mask = (shift_labels != -100).float()
     shift_labels[shift_labels == -100] = 0  # just to avoid gather on -100
 
     log_probs = torch.log_softmax(shift_logits, dim=-1)
-    log_probs = torch.gather(log_probs, 2, shift_labels.unsqueeze(2)).squeeze(2)
+    log_probs = torch.gather(log_probs, 2,
+                             shift_labels.unsqueeze(2)).squeeze(2)
     log_probs = log_probs * label_mask
     return log_probs
 
@@ -109,53 +124,49 @@ def compute_token_log_probs(
 # Evaluate on Test Set
 ###############################################################################
 def evaluate_on_test_set(
-    inference_engine: LLM,
-    test_dataset: Dataset,
-    tokenizer: AutoTokenizer,
-    eos_token: str,
-    eval_sampling_params: SamplingParams,
-    reward_func: Callable[[str, dict[str, Any]], Tuple[float, dict[str, float]]],
-    local_rank: int
-) -> Tuple[dict[str, Any], dict[str, Any]]:
-    """
-    Use vLLM to generate from test set prompts, compute reward.
-    """
+        inference_engine: LLM, test_dataset: Dataset, tokenizer: AutoTokenizer,
+        eos_token: str, eval_sampling_params: SamplingParams,
+        reward_func: Callable[[str, dict[str, Any]], Tuple[float,
+                                                           dict[str, float]]],
+        local_rank: int) -> Tuple[dict[str, Any], dict[str, Any]]:
+    """Use vLLM to generate from test set prompts, compute reward."""
     # Generate
     generations = inference_engine.generate(
-        prompt_token_ids=test_dataset["input_ids"],
+        prompt_token_ids=test_dataset['input_ids'],
         sampling_params=eval_sampling_params,
     )
 
     metrics = {
-        "response_lengths": [],
-        "rewards": [],
-        "non_stop_rate": [],
+        'response_lengths': [],
+        'rewards': [],
+        'non_stop_rate': [],
     }
 
     all_query_token_ids = []
     all_responses_token_ids = []
 
     for i, sample in enumerate(test_dataset):
-        q_ids = sample["input_ids"]
+        q_ids = sample['input_ids']
         # vLLM returns [Out...], so for each i, we have one set of outputs
         response_token_ids = generations[i].outputs[0].token_ids
         finish_reason = generations[i].outputs[0].finish_reason
 
-        response = tokenizer.decode(response_token_ids, skip_special_tokens=False)
+        response = tokenizer.decode(response_token_ids,
+                                    skip_special_tokens=False)
         rew, rew_components = reward_func(response, sample)
 
         all_query_token_ids.append(q_ids)
         all_responses_token_ids.append(response_token_ids)
 
-        metrics["response_lengths"].append(len(response_token_ids))
-        metrics["rewards"].append(rew)
-        metrics["non_stop_rate"].append(finish_reason != "stop")
+        metrics['response_lengths'].append(len(response_token_ids))
+        metrics['rewards'].append(rew)
+        metrics['non_stop_rate'].append(finish_reason != 'stop')
         for k, v in rew_components.items():
-            metrics.setdefault(f"reward_metrics/{k}", []).append(v)
+            metrics.setdefault(f'reward_metrics/{k}', []).append(v)
 
     episodes = {
-        "all_query_token_ids": all_query_token_ids,
-        "all_response_token_ids": all_responses_token_ids,
+        'all_query_token_ids': all_query_token_ids,
+        'all_response_token_ids': all_responses_token_ids,
     }
     return episodes, metrics
 
@@ -171,32 +182,32 @@ def dump_episodes(
     iteration: int,
     is_eval: bool = False,
 ) -> list[list[Any]]:
-    """
-    Print a few examples for debug.
+    """Print a few examples for debug.
+
     If you want to store to MLflow or something, do it here.
     """
-    q_ids = episodes["all_query_token_ids"]
-    r_ids = episodes["all_response_token_ids"]
+    q_ids = episodes['all_query_token_ids']
+    r_ids = episodes['all_response_token_ids']
 
-    rewards = episodes_stats.get("rewards", [])
-    lengths = episodes_stats.get("response_lengths", [])
+    rewards = episodes_stats.get('rewards', [])
+    lengths = episodes_stats.get('response_lengths', [])
 
     q_texts = tokenizer.batch_decode(q_ids, skip_special_tokens=False)
     r_texts = tokenizer.batch_decode(r_ids, skip_special_tokens=False)
 
     # Just print first 2 examples
     if len(q_texts) >= 2 and not is_eval:
-        print(f"##### Iteration {iteration} Example 1")
-        print(f"Query:   {q_texts[0]}")
-        print(f"Resp:    {r_texts[0]}")
+        print(f'##### Iteration {iteration} Example 1')
+        print(f'Query:   {q_texts[0]}')
+        print(f'Resp:    {r_texts[0]}')
         print(f"Reward:  {rewards[0] if len(rewards)>0 else 'n/a'}")
-        print("")
+        print('')
 
-        print(f"##### Iteration {iteration} Example 2")
-        print(f"Query:   {q_texts[1]}")
-        print(f"Resp:    {r_texts[1]}")
+        print(f'##### Iteration {iteration} Example 2')
+        print(f'Query:   {q_texts[1]}')
+        print(f'Resp:    {r_texts[1]}')
         print(f"Reward:  {rewards[1] if len(rewards)>1 else 'n/a'}")
-        print("")
+        print('')
 
     table = []
     for i in range(len(q_texts)):
@@ -210,9 +221,7 @@ def dump_episodes(
 # Load Weights into vLLM
 ###############################################################################
 def load_model_into_vllm(model: FSDP, llm: LLM) -> None:
-    """
-    Copy the (fully sharded) model state into the vLLM engine.
-    """
+    """Copy the (fully sharded) model state into the vLLM engine."""
     world_size = dist.get_world_size()
 
     vllm_model = llm.llm_engine.model_executor.driver_worker.model_runner.model
@@ -225,28 +234,27 @@ def load_model_into_vllm(model: FSDP, llm: LLM) -> None:
 
     loaded_params = vllm_model.load_weights(params)
     if dist.get_rank() == 0:
-        print(f"vLLM loaded {len(loaded_params)} param partitions.")
+        print(f'vLLM loaded {len(loaded_params)} param partitions.')
 
 
 ###############################################################################
 # Optional: MLflow
 ###############################################################################
 def mlflow_initialize(cfg: MlflowConfig):
-    """
-    Example stub if you want to integrate MLflow logging.
+    """Example stub if you want to integrate MLflow logging.
+
     Called once at the start by rank0, etc.
     """
-    import mlflow
-    import uuid
-    from mlflow import MlflowClient
-
     if not os.getenv('DATABRICKS_TOKEN') or not os.getenv('DATABRICKS_HOST'):
-        raise KeyError(f"Missing env vars of DATABRICKS_TOKEN or DATABRICKS_HOST")
+        raise KeyError(
+            'Missing env vars of DATABRICKS_TOKEN or DATABRICKS_HOST')
 
     tracking_uri = 'databricks'
     if not dist.is_initialized() or not dist.is_available():
-        raise RuntimeError(f"torch.distributed is not initialized or not available."+
-        "Make usre call mlflow_initialize() after torch.init_process_group is called")
+        raise RuntimeError(
+            'torch.distributed is not initialized or not available.' +
+            'Make usre call mlflow_initialize() after torch.init_process_group is called'
+        )
 
     rank = dist.get_rank()
     runname = f'exp-run-{uuid.uuid4().hex[:4]}-rank{rank}'
@@ -263,20 +271,18 @@ def mlflow_initialize(cfg: MlflowConfig):
     cfg.tags['run_name'] = runname
     mlflow_client = MlflowClient(tracking_uri)
     experiment_id = mlflow_client.get_experiment_by_name(
-        name=cfg.experiment_name
-    ).experiment_id
-    new_run = mlflow_client.create_run(experiment_id=experiment_id, run_name=cfg.tags['run_name'])
-    mlflow.start_run(
-        run_id=new_run.info.run_id,
-        tags=cfg.tags,
-        log_system_metrics=cfg.log_system_metrics
-    )
+        name=cfg.experiment_name).experiment_id
+    new_run = mlflow_client.create_run(experiment_id=experiment_id,
+                                       run_name=cfg.tags['run_name'])
+    mlflow.start_run(run_id=new_run.info.run_id,
+                     tags=cfg.tags,
+                     log_system_metrics=cfg.log_system_metrics)
+
 
 def mlflow_log_params(cfg: Config):
-    import mlflow
-    from collections.abc import Mapping
-
-    def _flatten(d: Mapping, prefix: str = '', sep: str = '.') -> dict[str, Any]:
+    def _flatten(d: Mapping,
+                 prefix: str = '',
+                 sep: str = '.') -> dict[str, Any]:
         out = {}
         for k, v in d.items():
             key = f'{prefix}{sep}{k}' if prefix else k
@@ -285,18 +291,18 @@ def mlflow_log_params(cfg: Config):
             else:
                 out[key] = v
         return out
+
     flat = _flatten(cfg.to_dict())
     mlflow.log_params(flat)
 
-def mlflow_log_metrics(metrics: dict[str, Any], step: Optional[int] = None):
-    from mlflow import log_metrics
 
+def mlflow_log_metrics(metrics: dict[str, Any], step: Optional[int] = None):
     log_metrics(
         metrics=metrics,
         step=step,
         synchronous=True,
     )
 
+
 def mlflow_end_run():
-    import mlflow
     mlflow.end_run()

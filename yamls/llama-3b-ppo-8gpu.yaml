@@ -1,4 +1,4 @@
-max_seq_len: 1024 
+max_seq_len: 1024
 model:
   name: hf_causal_lm
   #init_device: mixed
@@ -108,6 +108,3 @@ ppo:
   episodes_per_iteration: 64 # Number of episodes to collect per iteration for training
   num_iterations: 1000
   eval_interval: 25
-
-
-

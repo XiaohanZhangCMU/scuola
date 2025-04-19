@@ -1,14 +1,14 @@
 # scuola
 
-Playground to train/run LLM agents 
+Playground to train/run LLM agents
 
-Approach 
+Approach
 
 
 1. Setup a interactive session with finetuning image, allocating 2 nodes
 
-1.1 Run finetune as it is 
-1.2 Run fientune with a streaming dataset 
+1.1 Run finetune as it is
+1.2 Run fientune with a streaming dataset
 1.3 Convert train.py to python sdk so not rely on yamls
 
 2. Run Scuola.train interactively with a streaming dataset of multiple streams
@@ -18,4 +18,3 @@ Approach
 4. Implement PPO in train.py
 
 5. Restructure the code so it is eaiser to generalize
-

@@ -71,10 +71,13 @@ def format_reward_func(completion: str, eos_token: str) -> float:
     Checks if completion has <think>...</think> and <answer>...</answer> in correct format,
     and if the <answer> content only has digits and + - * / ( ) .
     """
+    if not eos_token:
+        raise ValueError(f"eos_token cannot be empty")
+
     allowed_pattern = r"^[\d+\-*/().\s]+$"
     try:
         # Some lines add <think> at the start
-        completion = "<think>" + completion
+        #completion = "<think>" + completion
 
         # Remove EOS if present
         if completion.endswith(eos_token):
@@ -90,7 +93,7 @@ def format_reward_func(completion: str, eos_token: str) -> float:
             return 0.5
         return 1.0
 
-    except:
+    except Exception as e:
         return 0.0
 
 def equation_reward_func(completion: str, nums: list[int], target: int) -> float:
