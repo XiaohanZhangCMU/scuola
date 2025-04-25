@@ -74,6 +74,7 @@ def format_reward_func(completion: str, eos_token: str) -> float:
     if not eos_token:
         raise ValueError(f"eos_token cannot be empty")
 
+    print(f"I am here 0: processing {completion=}. {eos_token=}")
     allowed_pattern = r"^[\d+\-*/().\s]+$"
     try:
         # Some lines add <think> at the start
