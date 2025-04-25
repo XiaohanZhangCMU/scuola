@@ -27,8 +27,10 @@ class DummyModel(nn.Module):
 
 def test_format_reward_func():
     valid_completion = "<think>solved</think>\n<answer>1+2+3</answer>"
+    valid_completion2= "Let me solve this step by step.\n<think>\nResp:     We have the numbers 20, 21, 64, and 4. We need to create an equation that equals 57. Let's start by trying to use each number once. </think>\n<answer>(64 - 20) / (4 + 21)</answer><|im_end|>"
     invalid_completion = "no tags"
     assert format_reward_func(valid_completion, "-1") == 1.0
+    assert format_reward_func(valid_completion2, "-1") == 1.0
     assert format_reward_func(invalid_completion, "-1") == 0.0
 
 
