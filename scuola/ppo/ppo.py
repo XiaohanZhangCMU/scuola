@@ -77,13 +77,13 @@ def format_reward_func(completion: str, eos_token: str) -> float:
     allowed_pattern = r"^[\d+\-*/().\s]+$"
     try:
         # Some lines add <think> at the start
-        completion = "<think>" + completion
+        # completion = "<think>" + completion
 
         # Remove EOS if present
         if completion.endswith(eos_token):
             completion = completion[: -len(eos_token)]
 
-        regex = r"^<think>([^<]*(?:<(?!/?think>)[^<]*)*)<\/think>\n<answer>([\s\S]*?)<\/answer>$"
+        regex = r"<think>([^<]*(?:<(?!/?think>)[^<]*)*)<\/think>\n<answer>([\s\S]*?)<\/answer>$"
         match = re.search(regex, completion, re.DOTALL)
         if not match or len(match.groups()) != 2:
             return 0.0

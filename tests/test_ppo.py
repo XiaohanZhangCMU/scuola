@@ -5,7 +5,7 @@ import mlflow
 from unittest import mock
 from datasets import Dataset
 
-from scuola.ppo.train import (
+from scuola.ppo.ppo import (
     format_reward_func, equation_reward_func,
     compute_reward, create_training_episodes,
     compute_pg_loss, preprocess_example, data_prep
@@ -27,7 +27,6 @@ class DummyModel(nn.Module):
 
 def test_format_reward_func():
     valid_completion = "<think>solved</think>\n<answer>1+2+3</answer>"
-    #valid_completion = "solved</think>\n<answer>1+2+3</answer>"
     invalid_completion = "no tags"
     assert format_reward_func(valid_completion, "-1") == 1.0
     assert format_reward_func(invalid_completion, "-1") == 0.0
