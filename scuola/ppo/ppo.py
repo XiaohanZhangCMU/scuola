@@ -57,15 +57,14 @@ log = logging.getLogger(__name__)
 SYSTEM_MESSAGE = (
     "You are a helpful assistant. You first think about the reasoning process in the mind "
     "and then provide the user with the answer. Start your reasoning in <think>...</think> tags, "
-    "and your final answer inside <answer>...</answer> tags."
+    "and your final answer inside <answer>...</answer> tags as a new line."
 )
 
 PROMPT_TEMPLATE = (
     "Using the numbers {numbers}, create an equation that equals {target}. "
     "You can use basic arithmetic operations (+, -, *, /) and each number can only be used once. "
-    "Show your work in ONE pair of <think> </think> tags. And return the final equation and answer in "
+    "Start with reasoning and end it with </think> tag. Put the final equation answer in "
     "<answer> </answer> tags for example <answer>(1 + 2) / (3 * 5)</answer>. "
-    "Acceptable format should be <think> your reasoning</think>\n<answer>your answer</answer>."
 )
 
 def format_reward_func(completion: str, eos_token: str) -> float:
@@ -302,7 +301,7 @@ def preprocess_example(
             "role": "user",
             "content": PROMPT_TEMPLATE.format(numbers=numbers, target=target),
         },
-        {"role": "assistant", "content": "Let's think carefully."},
+        {"role": "assistant", "content": "<think>Let's think carefully."},
     ]
     # We'll rely on a custom "apply_chat_template" approach. If your tokenizer doesn't have it,
     # just manually build a string and tokenize via tokenizer(...)
