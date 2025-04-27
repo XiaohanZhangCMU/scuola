@@ -56,14 +56,16 @@ log = logging.getLogger(__name__)
 
 SYSTEM_MESSAGE = (
     "You are a helpful assistant. You first think about the reasoning process in the mind "
-    "and then provide the user with the answer."
+    "and then provide the user with the answer. Start your reasoning in <think>...</think> tags, "
+    "and your final answer inside <answer>...</answer> tags."
 )
 
 PROMPT_TEMPLATE = (
     "Using the numbers {numbers}, create an equation that equals {target}. "
     "You can use basic arithmetic operations (+, -, *, /) and each number can only be used once. "
     "Show your work in <think> </think> tags. And return the final equation and answer in "
-    "<answer> </answer> tags, for example <answer>(1 + 2) / (3 * 5)</answer>."
+    "<answer> </answer> tags, for example "
+    "<think>First let's try.... then let's try ...</think>\n<answer>(1 + 2) / (3 * 5)</answer>."
 )
 
 def format_reward_func(completion: str, eos_token: str) -> float:
@@ -83,6 +85,10 @@ def format_reward_func(completion: str, eos_token: str) -> float:
         # Remove EOS if present
         if completion.endswith(eos_token):
             completion = completion[: -len(eos_token)]
+
+        think_close_count = completion.count("</think>")
+        if think_close_count > 3:
+            return 0.0
 
         regex = r"<think>([^<]*(?:<(?!/?think>)[^<]*)*)<\/think>\n<answer>([\s\S]*?)<\/answer>"
         match = re.search(regex, completion, re.DOTALL)
