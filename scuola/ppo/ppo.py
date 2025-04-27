@@ -296,7 +296,7 @@ def preprocess_example(
             "role": "user",
             "content": PROMPT_TEMPLATE.format(numbers=numbers, target=target),
         },
-        {"role": "assistant", "content": "Let me solve this step by step.\n<think>"},
+        {"role": "assistant", "content": "<think>"},
     ]
     # We'll rely on a custom "apply_chat_template" approach. If your tokenizer doesn't have it,
     # just manually build a string and tokenize via tokenizer(...)
