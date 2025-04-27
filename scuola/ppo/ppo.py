@@ -79,7 +79,7 @@ def format_reward_func(completion: str, eos_token: str) -> float:
     allowed_pattern = r"^[\d+\-*/().\s]+$"
     try:
         # Some lines add <think> at the start
-        # completion = "<think>" + completion
+        completion = "<think>" + completion
 
         # Remove EOS if present
         if completion.endswith(eos_token):
@@ -107,7 +107,7 @@ def equation_reward_func(completion: str, nums: list[int], target: int) -> float
     Checks if the final <answer> expression is mathematically correct, uses all numbers exactly once, etc.
     """
     try:
-        #completion = "<think>" + completion
+        completion = "<think>" + completion
         match = re.search(r"<answer>(.*?)<\/answer>", completion)
         if match is None:
             return 0.0
