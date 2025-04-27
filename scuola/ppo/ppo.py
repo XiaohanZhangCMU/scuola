@@ -63,9 +63,9 @@ SYSTEM_MESSAGE = (
 PROMPT_TEMPLATE = (
     "Using the numbers {numbers}, create an equation that equals {target}. "
     "You can use basic arithmetic operations (+, -, *, /) and each number can only be used once. "
-    "Show your work in <think> </think> tags. And return the final equation and answer in "
-    "<answer> </answer> tags, for example "
-    "<think>First let's try.... then let's try ...</think>\n<answer>(1 + 2) / (3 * 5)</answer>."
+    "Show your work in ONE pair of <think> </think> tags. And return the final equation and answer in "
+    "<answer> </answer> tags for example <answer>(1 + 2) / (3 * 5)</answer>. "
+    "Acceptable format should be <think> your reasoning</think>\n<answer>your answer</answer>."
 )
 
 def format_reward_func(completion: str, eos_token: str) -> float:
@@ -108,7 +108,7 @@ def equation_reward_func(completion: str, nums: list[int], target: int) -> float
     Checks if the final <answer> expression is mathematically correct, uses all numbers exactly once, etc.
     """
     try:
-        completion = "<think>" + completion
+        #completion = "<think>" + completion
         match = re.search(r"<answer>(.*?)<\/answer>", completion)
         if match is None:
             return 0.0
@@ -302,7 +302,7 @@ def preprocess_example(
             "role": "user",
             "content": PROMPT_TEMPLATE.format(numbers=numbers, target=target),
         },
-        {"role": "assistant", "content": "<think>"},
+        {"role": "assistant", "content": "<think>Let's think carefully."},
     ]
     # We'll rely on a custom "apply_chat_template" approach. If your tokenizer doesn't have it,
     # just manually build a string and tokenize via tokenizer(...)
