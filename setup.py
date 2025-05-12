@@ -46,7 +46,7 @@ install_requires = [
     "accelerate==1.4.0",
     "datasets==3.3.2",
     "deepspeed==0.16.4",
-    "wandb==0.19.7",
+    "wandb==0.19.11",
     "ipykernel==6.29.5",
     "ipywidgets==8.1.5",
     "jupyter==1.1.1",
